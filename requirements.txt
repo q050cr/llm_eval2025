@@ -1,0 +1,11 @@
+numpy
+pandas
+polars
+pyarrow
+matplotlib
+scipy
+scikit-learn
+jupyter
+pyyaml
+opencv-python
+tqdm

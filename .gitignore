@@ -1,0 +1,31 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+/.quarto/
+
+# Credentials
+*.env
+
+# Data
+data/
+outputs/
+
+# Explizit files
+main.py
+llm_eval2025.qmd
+_quarto.yml
+references.bib
+setup.sh
+config.yaml
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
