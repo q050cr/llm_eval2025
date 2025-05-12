@@ -25,6 +25,8 @@ _quarto.yml
 references.bib
 setup.sh
 config.yaml
+scripts/test.py
+
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
