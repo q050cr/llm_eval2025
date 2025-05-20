@@ -5,8 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "anthropic>=0.51.0",
     "chatlas>=0.7.0",
     "google-genai>=1.14.0",
+    "jupyter>=1.1.1",
     "openai>=1.78.0",
     "python-dotenv>=1.1.0",
     "seaborn>=0.13.2",

@@ -6,6 +6,14 @@ dist/
 wheels/
 *.egg-info
 
+# R generated files
+*.Rhistory
+*.Rproj.user
+*.RData
+*.Rhistory
+*.Rproj
+
+
 # Virtual environments
 .venv
 
