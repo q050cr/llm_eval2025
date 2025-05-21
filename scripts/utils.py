@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import requests
 import os
 import json
+import requests
 
 
 # --- small, generic wrapper that every “model” can return ------------------ #
@@ -184,6 +185,40 @@ class DeepseekChat:
         )
         usage = getattr(response, "usage", None)
 
+        return ResponseWrapper(response.choices[0].message.content, response, citations=None, usage=usage)
+
+# XAI ------------------------------------------------------------------ #
+class XAIChat:
+    """
+    Drop-in Chatlas-style wrapper for X.AI's API.
+    Uses the OpenAI client with a custom base URL.
+    """
+    def __init__(self, 
+                model="grok-3", 
+                system_prompt="", 
+                api_key=None):
+        self.model = model
+        self.system_prompt = system_prompt
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.x.ai/v1"
+        )
+
+    def chat(self, user_input, echo=None):
+        # Create a response object similar to what Chatlas expects
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            stream=False
+        )
+        usage = getattr(response, "usage", None)
+
+        if echo in ("all", "response"):
+            print("➜ XAI raw response\n", response, "\n")
+            
         return ResponseWrapper(response.choices[0].message.content, response, citations=None, usage=usage)
 
 # OpenAI ------------------------------------------------------------------ #

@@ -19,6 +19,20 @@
         "--repeat",
         "1"
       ]
+    },
+    {
+      "name": "Rerun Failed Anthropic",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/rerun_failed_anthropic.py",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env",
+      "args": [
+        "--input",
+        "./outputs/chats/responses_20250521_162812.csv",
+        "--model",
+        "anthropic"
+      ]
     }
   ]
 }

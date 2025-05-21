@@ -25,6 +25,7 @@ wheels/
 # Data
 data/
 outputs/
+logs/
 
 # additional dirs
 notebooks/test/

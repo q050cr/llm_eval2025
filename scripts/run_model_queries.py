@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
 """
+This script allows querying multiple language models in parallel with configurable 
+repetition for statistical analysis. It supports various models including OpenAI, 
+Google, Anthropic, DeepSeek, Perplexity, GitHub Copilot, X.AI, and local Ollama models.
+    python run_model_queries.py [--models MODEL1,MODEL2,...] [--n_rows N] [--repeat N] [--questions_file PATH]
+Arguments:
+    --models: Comma-separated list of models to query (default: openai,anthropic,google,deepseek,perplexity,github)
+    --n_rows: Number of questions to process for testing (default: all questions)
+    --repeat: Number of times to repeat each question for statistical analysis (default: 1)
+    --questions_file: Path to CSV file with questions (default: ./data/questions/FAQ_HF_CMP_Patient_20250519.csv)
+Environment Variables:
+    The script requires API keys to be set as environment variables in a .env file:
+    - OPENAI_API_KEY: For OpenAI models (gpt-4o)
+    - DEEPSEEK_API_KEY: For DeepSeek models
+    - GOOGLE_API_KEY: For Google models (gemini)
+    - ANTHROPIC_API_KEY: For Anthropic models (claude)
+    - PERPLEXITY_API_KEY: For Perplexity models
+    - GITHUB_PAT: For GitHub Copilot models
+    - XAI_API_KEY: For X.AI/Grok models
+Input:
+    - CSV file with questions (must contain columns: index, category, question, select)
+    - Only rows where select='yes' will be processed
+Output:
+    Files are saved to ./outputs/chats/ directory:
+    - responses_TIMESTAMP.csv: DataFrame with all model responses
+    - raw_responses_TIMESTAMP.pkl: Pickle file with detailed response data
+    - raw_responses_TIMESTAMP.json: JSON backup if pickle fails
+Notes:
+    - The script implements rate limiting for certain APIs (Anthropic, GitHub)
+    - Includes error handling and retry logic for API failures
+    - Questions can be repeated multiple times for statistical analysis
+
 Script for parallel querying of LLMs for clinical decision support evaluation.
 Based on chatlas_query.ipynb notebook.
 
@@ -10,6 +41,7 @@ Usage:
 import pdb
 import os
 import argparse
+import anthropic
 import pandas as pd
 import pickle
 import time
@@ -23,13 +55,17 @@ from concurrent.futures import ThreadPoolExecutor
 from tenacity import retry, wait_exponential, stop_after_attempt
 from collections import defaultdict
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Import custom classes
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from scripts.utils import ChatPerplexityDirect, DeepseekChat, OpenAIChat
+from scripts.utils import ChatPerplexityDirect, DeepseekChat, OpenAIChat, XAIChat
 
 
 # Force GitHub model calls to run one at a time
 github_lock = threading.Lock()
+anthropic_lock = threading.Lock()
 
 
 def initialize_model(model_name):
@@ -82,6 +118,13 @@ def initialize_model(model_name):
         # https://aistudio.google.com/
         return ChatGithub(model="grok-3", system_prompt=system_prompt, api_key=api_key)
 
+    elif model_name == 'xai':
+        api_key = os.getenv('XAI_API_KEY')
+        if not api_key:
+            raise EnvironmentError("Missing XAI_API_KEY")
+        # Use custom XAIChat class with X.AI's API
+        return XAIChat(model="grok-3", system_prompt=system_prompt, api_key=api_key)
+
     elif model_name == 'ollama':
         # ollama list
         return ChatOllama(model="deepseek-r1:14b", system_prompt=system_prompt)
@@ -90,7 +133,7 @@ def initialize_model(model_name):
         raise ValueError(f"Unsupported model: {model_name}")
 
 
-@retry(wait=wait_exponential(min=1, max=5), stop=stop_after_attempt(3))
+@retry(wait=wait_exponential(min=2, max=60), stop=stop_after_attempt(5))
 def call_model_with_retry(instance, question):
     return instance.chat(question, echo="none")
 
@@ -104,6 +147,13 @@ def query_single_model(question, model_key, instance):
         if model_key == "github":
             with github_lock:
                 response = call_model_with_retry(instance, question)
+        
+        elif model_key == "anthropic":
+            with anthropic_lock:
+                # Add a small delay between Anthropic requests to prevent rate limiting
+                time.sleep(1.2)  # ~50 requests per minute = ~1.2 seconds per request
+                response = call_model_with_retry(instance, question)
+        
         else:
             response = call_model_with_retry(instance, question)
 
@@ -141,7 +191,7 @@ def query_models_parallel(questions_df, models_to_run, store_full_response=True)
 
     futures = []
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         for _, row in questions_df.iterrows():
             question = row['question']
             query_id = row.get('query_id', 0)
@@ -245,6 +295,8 @@ def main():
                       help="Number of questions to process (for testing). If not specified, all questions are used.")
     parser.add_argument("--repeat", type=int, default=1,
                       help="Number of times to repeat each question for statistical analysis")
+    parser.add_argument("--questions_file", type=str, default="./data/questions/FAQ_HF_CMP_Patient_20250519.csv",
+                      help="Path to CSV file with questions (default: ./data/questions/FAQ_HF_CMP_Patient_20250519.csv)")
     args = parser.parse_args()
     
     # Load environment variables
@@ -255,7 +307,9 @@ def main():
     print(f"Running with models: {models_to_run}")
 
     # Load questions
-    questions_df = pd.read_csv("./data/questions/FAQ_HF_CMP_Patient_20250519.csv")
+    questions_file = args.questions_file
+    print(f"Loading questions from: {questions_file}")
+    questions_df = pd.read_csv(questions_file)
     questions_df = questions_df[questions_df['select'] == 'yes']
     
     # Limit number of questions if specified
