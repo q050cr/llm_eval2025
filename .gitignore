@@ -26,6 +26,9 @@ wheels/
 data/
 outputs/
 
+# additional dirs
+notebooks/test/
+
 # Explizit files
 main.py
 llm_eval2025.qmd

@@ -2,201 +2,235 @@
 Utility functions
 """
 
+"""
+Perplexity wrapper that looks & feels like a Chatlas model
+"""
+from openai import OpenAI  # Added for Deepseek API access
+from urllib.parse import urlparse
+from types import SimpleNamespace
+import requests
 import os
 import json
-import requests
-from types import SimpleNamespace
-from urllib.parse import urlparse
 
 
+# --- small, generic wrapper that every “model” can return ------------------ #
+class ResponseWrapper:
+    """
+    Matches what Chatlas expects:
+        - .content      → final text
+        - .raw_response → full provider payload
+        - .citations    → optional list (empty if provider doesn't supply any)
+        - .usage        → token usage etc. (empty dict by default)
+    """
+
+    def __init__(self, content, raw_response,
+                 citations=None, usage=None):
+        self.content = content
+        self.raw_response = raw_response
+        self.citations = citations or []
+        self.usage = usage or {}
+
+
+# --------------------------------------------------------------------------- #
 class ChatPerplexityDirect:
     """
-    A class for interacting with the Perplexity API directly, similar to Chatlas but with
-    citation handling. This implementation extracts and processes citations from responses.
+    Drop-in replacement for a Chatlas-style model.
     """
 
-    def __init__(self, api_key=None, model="sonar-pro", system_prompt=""):
-        """
-        Initialize the Perplexity API client.
-
-        Args:
-            api_key (str): Perplexity API key. If None, will try to get from environment.
-            model (str): The model to use. Options: "sonar", "sonar-pro", "sonar-small", "sonar-medium", "claude-3.5-sonnet", etc.
-            system_prompt (str): System prompt to use for all conversations.
-        """
+    def __init__(self,
+                 api_key: str | None = None,
+                 model: str = "sonar-pro",
+                 system_prompt: str = ""):
         self.api_key = api_key or os.getenv("PERPLEXITY_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "Perplexity API key is required. Set it with api_key parameter or PERPLEXITY_API_KEY env variable.")
+            raise ValueError("Perplexity API key missing "
+                             "(param or PERPLEXITY_API_KEY env var).")
 
         self.model = model
         self.system_prompt = system_prompt
         self.url = "https://api.perplexity.ai/chat/completions"
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
+            "Content-Type":  "application/json"
         }
 
-    def _extract_citations(self, response_json):
+    # ------------------------- public entry-point -------------------------- #
+    def chat(self, user_input: str, echo: str | None = None) -> ResponseWrapper:
         """
-        Extract citations from a Perplexity API response.
-
-        Args:
-            response_json (dict): The JSON response from the Perplexity API.
-
-        Returns:
-            list: List of citation dictionaries.
+        Exactly the signature Chatlas uses.
         """
-        citations = []
-
-        # Check for top-level citations field first (as in your example)
-        if 'citations' in response_json and isinstance(response_json['citations'], list):
-            for url in response_json['citations']:
-                citation = {
-                    'url': url,
-                    'title': self._extract_domain_from_url(url),
-                    'text': ''  # No excerpt available in this format
-                }
-                citations.append(citation)
-            return citations
-
-        # If no top-level citations, check other possible locations
-        if 'choices' in response_json and len(response_json['choices']) > 0:
-            choice = response_json['choices'][0]
-
-            # Extract tool calls (citations) if they exist
-            if 'message' in choice and 'tool_calls' in choice['message']:
-                tool_calls = choice['message']['tool_calls']
-                for tool_call in tool_calls:
-                    if tool_call.get('type') == 'link':
-                        function = tool_call.get('function', {})
-                        if function and 'arguments' in function:
-                            try:
-                                args = json.loads(function['arguments'])
-                                if 'url' in args:
-                                    citation = {
-                                        'url': args['url'],
-                                        'title': args.get('title', self._extract_domain_from_url(args['url'])),
-                                        'text': args.get('text', '')
-                                    }
-                                    citations.append(citation)
-                            except json.JSONDecodeError:
-                                pass
-
-            # Look for citations in special 'links' field if available
-            if 'message' in choice and 'links' in choice['message']:
-                for link in choice['message']['links']:
-                    citation = {
-                        'url': link.get('url', ''),
-                        'title': link.get('title', self._extract_domain_from_url(link.get('url', ''))),
-                        'text': link.get('text', '')
-                    }
-                    citations.append(citation)
-
-        return citations
-
-    def _extract_domain_from_url(self, url):
-        """
-        Extract a readable domain name from a URL to use as a title
-        when no explicit title is available.
-
-        Args:
-            url (str): The URL to extract a domain from
-
-        Returns:
-            str: A readable domain name or the original URL if parsing fails
-        """
-        try:
-            # Remove www. if present and return the domain
-            parsed_url = urlparse(url)
-            domain = parsed_url.netloc
-            if domain.startswith('www.'):
-                domain = domain[4:]
-            # If it's YouTube, try to make it more descriptive
-            if 'youtube.com' in domain or 'youtu.be' in domain:
-                return "YouTube Video"
-            # Wikipedia articles can be more descriptive
-            if 'wikipedia.org' in domain and '/wiki/' in url:
-                topic = url.split('/wiki/')[1].replace('_', ' ')
-                return f"Wikipedia: {topic}"
-            return domain
-        except:
-            return url
-
-    def _create_response_object(self, response_json):
-        """
-        Create a response object similar to what Chatlas would return.
-
-        Args:
-            response_json (dict): The JSON response from the Perplexity API.
-
-        Returns:
-            SimpleNamespace: A dot-accessible object with the response data.
-        """
-        # Extract the main response content
-        content = ""
-        if 'choices' in response_json and len(response_json['choices']) > 0:
-            choice = response_json['choices'][0]
-            if 'message' in choice and 'content' in choice['message']:
-                content = choice['message']['content']
-
-        # Extract citations
-        citations = self._extract_citations(response_json)
-
-        # Create a Chatlas-like response object
-        response_obj = SimpleNamespace(
-            content=content,
-            raw_response=response_json,
-            model=response_json.get('model', self.model),
-            citations=citations,
-            usage=response_json.get('usage', {})
-        )
-
-        return response_obj
-
-    def chat(self, message, echo=None):
-        """
-        Send a message to the Perplexity API and get a response.
-
-        Args:
-            message (str): The user's message to send to the API.
-            echo (str): If "all", print both request and response. If "response", print only response. 
-                      If "none" or None, print nothing.
-
-        Returns:
-            SimpleNamespace: A response object with content, citations, and metadata.
-        """
-        # Prepare the messages array
+        # 1) build messages
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
-        messages.append({"role": "user", "content": message})
+        messages.append({"role": "user", "content": user_input})
 
-        # Build the payload
+        # 2) payload
         payload = {
-            "model": self.model,
-            "messages": messages,
-            # Add parameters to enhance citations
-            "tools": [{"type": "link"}],  # Request link citations
-            "tool_choice": "auto",  # Let the model decide when to add citations
-            "link_history": True    # Include history of links
+            "model":        self.model,
+            "messages":     messages
         }
 
-        # Echo the request if requested
         if echo == "all":
-            print("Request:")
-            print(json.dumps(payload, indent=2))
-            print("\n")
+            print("➜ Perplexity request\n",
+                  json.dumps(payload, indent=2), "\n")
 
-        # Make the API call
-        response = requests.post(self.url, json=payload, headers=self.headers)
-        response_json = response.json()
+        # 3) call the API
+        resp = requests.post(self.url, json=payload, headers=self.headers)
+        resp.raise_for_status()
+        resp_json = resp.json()
 
-        # Echo the response if requested
-        if echo in ["all", "response"]:
-            print("Response:")
-            print(json.dumps(response_json, indent=2))
-            print("\n")
+        if echo in ("all", "response"):
+            print("➜ Perplexity raw response\n",
+                  json.dumps(resp_json, indent=2), "\n")
 
-        # Process and return the response
-        return self._create_response_object(response_json)
+        # 4) unpack
+        content = self._extract_content(resp_json)
+        citations = self._extract_citations(resp_json)
+        usage = resp_json.get("usage", {})
+
+        # 5) return Chatlas-compatible wrapper
+        return ResponseWrapper(content, resp_json, citations, usage)
+
+    # --------------------------- helpers ----------------------------------- #
+    def _extract_content(self, response_json: dict) -> str:
+        if (choices := response_json.get("choices")):
+            message = choices[0].get("message", {})
+            return message.get("content", "")
+        return ""
+
+    def _extract_citations(self, response_json: dict) -> list[dict]:
+        """
+        Collapses all the little formats Perplexity can emit into one simple list:
+        [{url, title, text}, …]
+        """
+        cites: list[dict] = []
+
+        # simple (top-level) format
+        for url in response_json.get("citations", []):
+            cites.append({
+                "url":   url,
+                "title": self._domain_title(url),
+                "text":  ""
+            })
+
+        # tools / link format
+        for choice in response_json.get("choices", []):
+            msg = choice.get("message", {})
+            for tc in msg.get("tool_calls", []):
+                if tc.get("type") != "link":
+                    continue
+                try:
+                    args = json.loads(tc["function"]["arguments"])
+                except (KeyError, json.JSONDecodeError):
+                    continue
+                url = args.get("url")
+                if url:
+                    cites.append({
+                        "url":   url,
+                        "title": args.get("title", self._domain_title(url)),
+                        "text":  args.get("text", "")
+                    })
+
+            # legacy 'links' member
+            for link in msg.get("links", []):
+                url = link.get("url", "")
+                cites.append({
+                    "url":   url,
+                    "title": link.get("title", self._domain_title(url)),
+                    "text":  link.get("text", "")
+                })
+
+        return cites
+
+    @staticmethod
+    def _domain_title(url: str) -> str:
+        """
+        Nice human-readable domain or special-case titles (Wikipedia, YouTube).
+        """
+        try:
+            domain = urlparse(url).netloc.removeprefix("www.")
+            if "youtube.com" in domain or "youtu.be" in domain:
+                return "YouTube Video"
+            if "wikipedia.org" in domain and "/wiki/" in url:
+                topic = url.split("/wiki/")[1].replace("_", " ")
+                return f"Wikipedia: {topic}"
+            return domain
+        except Exception:
+            return url
+
+
+# DeepSeek ------------------------------------------------------------------ #
+
+# Custom class for Deepseek API integration
+# Create a response object compatible with other Chatlas models having the 'content' instance + raw_response in addition
+
+class DeepseekChat:
+    def __init__(self, model, system_prompt, api_key):
+        self.model = model
+        self.system_prompt = system_prompt
+        self.client = OpenAI(
+            api_key=api_key, base_url="https://api.deepseek.com")
+
+    def chat(self, user_input, echo=None):
+        # Create a response object similar to what Chatlas expects
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            stream=False
+        )
+        usage = getattr(response, "usage", None)
+
+        return ResponseWrapper(response.choices[0].message.content, response, citations=None, usage=usage)
+
+# OpenAI ------------------------------------------------------------------ #
+class OpenAIChat:
+    """
+    Drop-in Chatlas-style wrapper for the official OpenAI SDK.
+    Works with either `responses.create` (>=1.80) or
+    `chat.completions.create` (any version).
+    """
+
+    def __init__(self,
+                 model: str = "gpt-4o",
+                 system_prompt: str = "",
+                 api_key: str | None = None):
+        self.model = model
+        self.system_prompt = system_prompt
+        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+
+        # Feature-detect which endpoint is available
+        self._use_responses = hasattr(self.client, "responses")
+
+    # ------------------------------------------------------------------ #
+    def chat(self, user_input: str, echo: str | None = None) -> ResponseWrapper:
+        if self._use_responses:                 # modern code path (responses)
+            raw = self.client.responses.create(
+                model=self.model,
+                # 'instructions' is new https://platform.openai.com/docs/guides/text?api-mode=responses#message-roles-and-instruction-following
+                instructions=self.system_prompt,
+                input=user_input,
+                stream=False
+            )
+            content = raw.output_text           # single string
+        else:                                   # fallback for old SDKs (chat.completions)
+            raw = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_input},
+                ],
+                stream=False
+            )
+            content = raw.choices[0].message.content
+
+        usage = getattr(raw, "usage", None)     # guaranteed on responses API
+
+        if echo in ("all", "response"):
+            print(raw.model_dump_json(indent=2) if hasattr(
+                raw, "model_dump_json") else raw)
+
+        return ResponseWrapper(content, raw, usage=usage)
