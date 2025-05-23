@@ -105,6 +105,33 @@ for col in model_cols:
     else:
         print(f"  - {col}: No missing values")
 
+
+#%% Perplexity citations remove ----------------------
+
+# Remove citations like [1], [2], etc. from perplexity_response
+print("\nRemoving citations from perplexity_response...")
+
+# Before count of citations
+citation_pattern = r'\[\d+\]'
+citations_count = merged_df['perplexity_response'].str.count(citation_pattern).sum()
+print(f"  - Found {citations_count} citations to remove")
+
+#%% Sample before cleaning
+if citations_count > 0:
+    sample_idx = merged_df['perplexity_response'].str.contains(citation_pattern, na=False).idxmax()
+    print(f"  - Example before cleaning (first 100 chars):")
+    print(f"    {merged_df.loc[sample_idx, 'perplexity_response'][:100]}...")
+
+#%% Remove the citations
+merged_df['perplexity_response'] = merged_df['perplexity_response'].str.replace(
+    citation_pattern, '', regex=True
+)
+
+#%% Verify citations were removed
+remaining_count = merged_df['perplexity_response'].str.count(citation_pattern).sum()
+print(f"  - Citations remaining after cleaning: {remaining_count}")
+
+
 #%% Save the prepared data ---------------------------
 merged_df.to_csv(output_path, index=False)
 print(f"\nPrepared data saved to: {output_path}")
