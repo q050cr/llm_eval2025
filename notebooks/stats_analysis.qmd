@@ -20,8 +20,11 @@ bibliography: references.bib
 library(tidyverse)
 library(knitr)
 library(kableExtra)
+library(gt)
 library(ggplot2)
 library(patchwork)
+library(quanteda)
+library(quanteda.textstats)
 library(lme4)
 library(lmerTest)
 library(emmeans)
@@ -135,8 +138,21 @@ df_long <- df %>%
 ### 1.1 Response Characteristics
 
 ```{r response-readability}
+
+# Prepare unique responses: collapse across raters to one per query/model
+unique_responses <- df %>%
+  distinct(query_id, model, category, response) %>%
+  # Set category factor order
+  mutate(
+    category = factor(category, levels = c(
+      "Disease Understanding and Diagnosis",
+      "Treatment and Management",
+      "Lifestyle & Daily Activity"
+    ))
+  )
+
 # Calculate readability metrics for responses
-readability_metrics <- df %>%
+readability_metrics <- unique_responses %>%
   group_by(model) %>%
   summarise(
     n_responses = n_distinct(query_id),
@@ -156,11 +172,282 @@ readability_table <- readability_metrics %>%
 
 kable(readability_table,
   caption = "Table 1. Response characteristics by model (mean ± SD)",
-  format = "latex",
+  # format = "latex",
   booktabs = TRUE
 ) %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
+
+
+We calculate and present readability metrics for medical text responses using the **quanteda** and **quanteda.textstats** packages. We will compute the following indices:
+  
+  * **Flesch Reading Ease**
+  * **Flesch-Kincaid Grade Level**
+  * **Gunning Fog Index**
+  * **SMOG Index**
+  * **Coleman-Liau Index**
+  * **Automated Readability Index (ARI)**
+  
+  We will present descriptive statistics and visualizations in two ways:
+  
+  1. **Per model**
+  2. **Per model and category**
+  
+
+#### Flesch-Based Readability Formulas
+
+1. **Flesch Reading Ease (FRE)**
+
+   * **Formula**: `206.835 – (1.015 × ASL) – (84.6 × ASW)`
+
+     * *ASL*: Average Sentence Length (words per sentence)
+     * *ASW*: Average Syllables per Word
+   * **Output**: Score ranging from 0 to 100; higher scores indicate easier readability.
+   * **Interpretation**:
+
+     * 90–100: Very easy (understood by 11-year-olds)
+     * 60–70: Standard (13–15-year-olds)
+     * 30–50: Difficult (college level)
+   * **Usage**: Provides a general sense of text readability but requires a conversion table to relate scores to grade levels. ([en.wikipedia.org][1], [readable.com][2])
+
+2. **Flesch-Kincaid Grade Level (FKGL)**
+
+   * **Formula**: `0.39 × ASL + 11.8 × ASW – 15.59`
+   * **Output**: U.S. school grade level; for example, a score of 8.5 corresponds to an 8th-grade reading level.
+   * **Usage**: Directly indicates the education level required to comprehend the text, making it practical for assessing materials intended for specific audiences. ([de.wikipedia.org][3], [nira.com][4])
+
+3. **Flesch.PSK (Powers-Sumner-Kearl Variation)**
+
+   * **Formula**: `(0.0778 × ASL) + (4.55 × ASW) – 2.2029`
+   * **Usage**: A less commonly used variation; not widely adopted in current readability assessments.
+
+---
+
+In medical and health-related fields, ensuring that patient education materials are accessible is crucial. Both FRE and FKGL are commonly used to assess the readability of such materials. However, FKGL is often preferred because it provides a direct correlation to U.S. grade levels, simplifying the assessment of whether materials are appropriate for the target audience. ([journals.lww.com][https://journals.lww.com/edhe/fulltext/2017/30010/assessing_reading_levels_of_health_information_.15.aspx])
+
+For instance, a study analyzing patient information sheets found that the mean FKGL was 11.4, indicating that the materials were written at a level suitable for individuals with at least an 11th-grade education. ([pubmed.ncbi.nlm.nih.gov][https://pubmed.ncbi.nlm.nih.gov/36131293/])
+
+
+* **Use Flesch-Kincaid Grade Level (FKGL)** when you need a straightforward indication of the education level required to understand the text. This is particularly useful in medical contexts, where materials should be tailored to the patient's reading ability.([en.wikipedia.org][7])
+* **Use Flesch Reading Ease (FRE)** if you prefer a score that reflects the overall readability on a 100-point scale. This can be helpful for comparing the readability of different texts or versions of the same text.
+
+
+```{r}
+#| label: fn-readability-metrics
+#| echo: false
+
+clean_text_for_readability <- function(text) {
+  text %>%
+    # Remove markdown formatting
+    str_replace_all("\\*\\*(.*?)\\*\\*", "\\1") %>%  # Remove **bold**
+    str_replace_all("###\\s*", "") %>%               # Remove ### headers
+    str_replace_all("#\\s*", "") %>%                 # Remove # headers
+    # Clean up special characters that might confuse readability
+    str_replace_all("≤", "less than or equal to") %>%
+    # Remove extra whitespace
+    str_replace_all("\\s+", " ") %>%
+    str_trim()
+}
+
+# Modified function
+compute_readability <- function(texts) {
+  cleaned_texts <- map_chr(texts, clean_text_for_readability)
+  txt_quanteda <- quanteda::corpus(cleaned_texts)
+  stats <- quanteda.textstats::textstat_readability(
+    txt_quanteda,
+    measure = c("Flesch", "Flesch.Kincaid", "FOG", "SMOG", "Coleman.Liau.short", "ARI")
+  )
+  as_tibble(stats)
+}
+
+# Original function (no cleaning)
+compute_readability_raw <- function(texts) {
+  txt_quanteda <- quanteda::corpus(texts)  # No cleaning step
+  stats <- quanteda.textstats::textstat_readability(
+    txt_quanteda,
+    measure = c("Flesch", "Flesch.Kincaid", "FOG", "SMOG", "Coleman.Liau.short", "ARI")
+  )
+  as_tibble(stats)
+}
+```
+
+
+```{r}
+#| label: compare-cleaned-text-stats-with-raw
+#| echo: false
+#| include: false
+
+# Test on a few more samples to see if the pattern holds
+test_samples <- head(unique_responses$response, 5)  # Test first 5 responses
+
+# Compare raw vs cleaned across multiple texts
+comparison_results <- map_dfr(1:length(test_samples), ~{
+  text <- test_samples[.x]
+  
+  raw <- compute_readability_raw(text) %>% mutate(version = "raw", sample = .x)
+  cleaned <- compute_readability(clean_text_for_readability(text)) %>% mutate(version = "cleaned", sample = .x)
+  
+  bind_rows(raw, cleaned)
+})
+
+# Check if any differences exist
+res_cleaning <- comparison_results %>%
+  select(-document) %>%
+  pivot_wider(names_from = version, values_from = c(Flesch:ARI)) %>%
+  mutate(
+    flesch_diff = abs(Flesch_raw - Flesch_cleaned),
+    fk_diff = abs(Flesch.Kincaid_raw - Flesch.Kincaid_cleaned)
+  ) 
+
+# no diffs observed
+```
+
+```{r}
+#| label: readability-for-each-response-row-wise
+
+readability_scores <- unique_responses %>%
+  mutate(
+    rid = row_number(),
+    .metrics = compute_readability(response)
+  ) %>%
+  unnest(cols = c(.metrics))
+```
+
+
+```{r}
+#| label: Readability-per-model
+
+read_by_model <- readability_scores %>%
+  group_by(model) %>%
+  summarise(
+    # Count total responses
+    n_responses = n(),
+    `Flesch Ease`    = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
+    `Flesch K-G`     = sprintf("%.1f ± %.1f", mean(`Flesch.Kincaid`, na.rm = TRUE), sd(`Flesch.Kincaid`, na.rm = TRUE)),
+    `Gunning Fog`    = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
+    SMOG             = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
+    `Coleman-Liau`   = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
+    ARI              = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
+  )
+
+read_by_model %>% 
+  mutate(
+    model = tools::toTitleCase(model)
+  ) %>% 
+  gt() %>%
+  tab_header(title = "Table 1: Readability Metrics by Model") %>%
+  fmt_missing(missing_text = "-")
+```
+
+```{r}
+#| label: density-plot-flesch-by-model
+
+ggplot(readability_scores, aes(x = Flesch.Kincaid, fill = model)) +
+  geom_density(alpha = 0.4) +
+  labs(
+    title = "Distribution of Flesch Reading Ease by Model",
+    x = "Flesch Reading Ease",
+    y = "Density"
+  ) +
+  scale_fill_manual(values = ai_colors)
+```
+
+```{r}
+#| label: violin-plot-flesch-model
+#| message: false
+#| warning: false
+
+p <- ggplot(readability_scores, aes(x = model, y = Flesch.Kincaid, fill = model)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +
+  geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+  labs(
+    title    = "Flesch Reading Ease by Model",
+    subtitle = "Violin + individual scores + mean",
+    x        = NULL,
+    y        = "Flesch Reading Ease"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  theme_minimal(base_size = 14) +
+  theme(
+    # axis.text.x      = element_text(angle = 45, hjust = 1),
+    # panel.grid.minor = element_blank(),
+    legend.position  = "none"
+  )
+
+p
+```
+
+
+```{r}
+#| label: Readability-per-category-and-model
+
+read_by_category_model <- readability_scores %>%
+  group_by(category, model) %>%
+  summarise(
+    n_responses = n(),
+    `Flesch Ease`    = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
+    `Flesch K-G`     = sprintf("%.1f ± %.1f", mean(Flesch.Kincaid, na.rm = TRUE), sd(Flesch.Kincaid, na.rm = TRUE)),
+    `Gunning Fog`    = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
+    SMOG             = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
+    `Coleman-Liau`   = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
+    ARI              = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
+  )
+
+read_by_category_model %>% 
+  mutate(
+    model = tools::toTitleCase(model)
+  ) %>% 
+  gt() %>%
+  tab_header(title = "Table 2: Readability Metrics by Category and Model") %>%
+  fmt_missing(missing_text = "-")
+```
+
+
+
+```{r}
+#| label: density-plot-flesch-by-model-category
+
+ggplot(readability_scores, aes(x = Flesch, fill = model)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ category) +
+  labs(
+    title = "Flesch Reading Ease across Models by Category",
+    x = "Flesch Reading Ease",
+    y = "Density"
+  ) +
+  scale_fill_manual(values = ai_colors)
+
+```
+
+```{r}
+#| label: violin-plot-flesch-model-category
+#| message: false
+#| warning: false
+
+p <- ggplot(readability_scores, aes(x = model, y = Flesch.Kincaid, fill = model)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +
+  geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+  facet_wrap(~ category, ncol = 1) +
+  labs(
+    title    = "Flesch Reading Ease by Model and Category",
+    subtitle = "Violin + individual scores + mean",
+    x        = NULL,
+    y        = "Flesch Reading Ease"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  theme_minimal(base_size = 14) +
+  theme(
+    # axis.text.x      = element_text(angle = 45, hjust = 1),
+    # panel.grid.minor = element_blank(),
+    legend.position  = "none"
+  )
+
+p
+```
+
+
 
 ### 1.2 Overall Performance by Model
 
@@ -377,6 +664,167 @@ print(p_heatmap)
 ggsave("figures/figure3_model_feature_heatmap.pdf", p_heatmap, width = 10, height = 8)
 ```
 
+```{r}
+#| label: feature-stats
+#| echo: FALSE
+library(dplyr)
+library(tidyr)
+
+# 1. Numeric summaries
+feature_stats <- df_long %>%
+  group_by(model, feature) %>%
+  summarise(
+    mean_rating = mean(rating),
+    sd_rating   = sd(rating),
+    n           = n(),
+    se          = sd_rating / sqrt(n),
+    ci_lower    = mean_rating - qt(0.975, n - 1) * se,
+    ci_upper    = mean_rating + qt(0.975, n - 1) * se,
+    .groups     = "drop"
+  )
+
+# 2. Pivot for display: combine mean & CI
+feature_wide <- feature_stats %>%
+  mutate(
+    Mean_CI = sprintf("%0.2f (%0.2f–%0.2f)", mean_rating, ci_lower, ci_upper)
+  ) %>%
+  select(feature, model, Mean_CI) %>%
+  pivot_wider(names_from  = model,
+              values_from = Mean_CI)
+
+# 3. Identify highest and lowest feature for each model
+best_worst <- feature_stats %>%
+  group_by(model) %>%
+  summarise(
+    Highest     = feature[which.max(mean_rating)],
+    Highest_val = max(mean_rating),
+    Lowest      = feature[which.min(mean_rating)],
+    Lowest_val  = min(mean_rating),
+    .groups     = "drop"
+  )
+```
+
+```{r}
+#| label: feature-table-wide
+#| echo: FALSE
+
+feature_wide %>%
+  gt(rowname_col = "feature") %>%
+  cols_label(
+    feature    = "Feature",
+    anthropic  = "Anthropic",
+    deepseek   = "DeepSeek",
+    google     = "Google",
+    openai     = "OpenAI",
+    perplexity = "Perplexity",
+    xai        = "XAI"
+  ) %>%
+  tab_header(
+    title = "Mean Feature Ratings (95% CI) by Model"
+  )
+```
+
+```{r}
+#| label: best-worst-ci
+#| echo: FALSE
+
+# calculated feature_stats and best_worst before:
+# feature_stats has columns: model, feature, mean_rating, ci_lower, ci_upper
+# best_worst has: model, Highest, Highest_val, Lowest, Lowest_val
+
+best_worst_ci <- best_worst %>%
+  left_join(
+    feature_stats %>% select(model, feature, ci_lower, ci_upper),
+    by = c("model", "Highest" = "feature")
+  ) %>%
+  rename(high_ci_lower = ci_lower,
+         high_ci_upper = ci_upper) %>%
+  left_join(
+    feature_stats %>% select(model, feature, ci_lower, ci_upper),
+    by = c("model", "Lowest" = "feature")
+  ) %>%
+  rename(low_ci_lower = ci_lower,
+         low_ci_upper = ci_upper) %>%
+  mutate(
+    `Top Feature (Mean [95% CI])`    = sprintf("%s (%.2f [%.2f–%.2f])",
+                                              Highest, Highest_val, high_ci_lower, high_ci_upper),
+    `Bottom Feature (Mean [95% CI])` = sprintf("%s (%.2f [%.2f–%.2f])",
+                                              Lowest, Lowest_val, low_ci_lower, low_ci_upper),
+    # Capitalize model names
+    Model = recode(model,
+                   anthropic  = "Anthropic",
+                   deepseek   = "DeepSeek",
+                   google     = "Google",
+                   openai     = "OpenAI",
+                   perplexity = "Perplexity",
+                   xai        = "XAI")
+  ) %>%
+  select(Model, `Top Feature (Mean [95% CI])`, `Bottom Feature (Mean [95% CI])`)
+
+# Render GT table
+best_worst_ci %>%
+  gt() %>%
+  cols_label(
+    Model                           = "Model",
+    `Top Feature (Mean [95% CI])`   = "Highest",
+    `Bottom Feature (Mean [95% CI])`= "Lowest"
+  ) %>%
+  tab_header(
+    title = "Best‐ and Worst‐Rated Features by Model"
+  )
+
+```
+
+
+#### Interpretation
+
+* **Anthropic**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="anthropic"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="anthropic"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="anthropic"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="anthropic"])`).
+
+* **DeepSeek**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="deepseek"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="deepseek"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="deepseek"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="deepseek"])`).
+
+* **Google**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="google"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="google"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="google"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="google"])`).
+
+* **OpenAI**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="openai"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="openai"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="openai"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="openai"])`).
+
+* **Perplexity**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="perplexity"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="perplexity"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="perplexity"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="perplexity"])`).
+
+* **XAI**
+  
+  * Highest: **`r best_worst$Highest[best_worst$model=="xai"]`**
+  (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="xai"])`).
+* Lowest: **`r best_worst$Lowest[best_worst$model=="xai"]`**
+  (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="xai"])`).
+
+> Clinicians can use these highlights—each model’s strongest and weakest feature—to decide which system best fits their specific priorities.
+
+
+
+
 ### 2.2 Rater Type Comparison by Feature
 
 ```{r rater-type-feature}
@@ -412,6 +860,8 @@ p_rater_type_feature <- ggplot(
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+p_rater_type_feature
+
 ggsave("figures/figure4_mean_ratings_ratergroup_feature.pdf", p_rater_type_feature, width = 10, height = 8)
 ```
 
@@ -419,145 +869,203 @@ ggsave("figures/figure4_mean_ratings_ratergroup_feature.pdf", p_rater_type_featu
 
 ### 3.1 Within-Group Reliability
 
+We compute the single‐measure, absolute‐agreement ICC (ICC(A,1)) for each rater group (Students, Experts, Auto-graders) using a two-way random‐effects model. First we show ICC for all rating features combined: 
+
+
 ```{r within-group-icc}
-calculate_icc <- function(data, rater_group, feature_name) {
-  # Create a unique item identifier combining question (index) and model
-  icc_data <- data %>%
-    filter(rater_name %in% rater_group, feature == feature_name) %>%
-    mutate(item_id = paste(index, model, sep = "_")) %>%
-    select(item_id, rater_name, rating) %>%
-    # Remove any potential duplicates
-    distinct(item_id, rater_name, .keep_all = TRUE) %>%
-    pivot_wider(names_from = rater_name, values_from = rating) %>%
-    column_to_rownames("item_id")
+#-- Function to compute ICC for a given rater group ------------------------
+calculate_group_icc <- function(df_long, group_name) {
+  df_long %>%
+    filter(rater_type_detailed == group_name) %>% 
+    # make a unique "subject" ID so that each row in the wide matrix is one 
+    # (question × model × feature) combination
+    mutate(subject = paste(index, model, feature, sep = "_")) %>% 
+    select(subject, rater_name, rating) %>% 
+    # pivot to wide: one row per subject, one column per rater
+    pivot_wider(names_from  = rater_name,
+                values_from = rating) -> wide_df
 
-  # Check if we have enough data for ICC calculation
-  if (ncol(icc_data) > 1 && nrow(icc_data) > 1) {
-    # Remove rows with all NA values
-    icc_data_clean <- icc_data[rowSums(!is.na(icc_data)) > 1, ]
+  # drop the subject column and coerce to a numeric matrix
+  rating_mat <- wide_df %>% select(-subject) %>% as.matrix()
 
-    if (nrow(icc_data_clean) > 1 && ncol(icc_data_clean) > 1) {
-      tryCatch(
-        {
-          icc_result <- ICC(icc_data_clean)
-          return(data.frame(
-            Feature = feature_name,
-            N_items = nrow(icc_data_clean),
-            N_raters = ncol(icc_data_clean),
-            ICC2k = icc_result$results["ICC2k", "ICC"],
-            ICC2k_lower = icc_result$results["ICC2k", "lower bound"],
-            ICC2k_upper = icc_result$results["ICC2k", "upper bound"],
-            p_value = icc_result$results["ICC2k", "p"]
-          ))
-        },
-        error = function(e) {
-          return(data.frame(
-            Feature = feature_name,
-            N_items = nrow(icc_data_clean),
-            N_raters = ncol(icc_data_clean),
-            ICC2k = NA,
-            ICC2k_lower = NA,
-            ICC2k_upper = NA,
-            p_value = NA,
-            Error = as.character(e)
-          ))
-        }
-      )
-    }
-  }
-
-  return(data.frame(
-    Feature = feature_name,
-    N_items = ifelse(exists("icc_data"), nrow(icc_data), 0),
-    N_raters = ifelse(exists("icc_data"), ncol(icc_data), 0),
-    ICC2k = NA,
-    ICC2k_lower = NA,
-    ICC2k_upper = NA,
-    p_value = NA,
-    Error = "Insufficient data"
-  ))
+  # compute ICC: two‐way random, absolute agreement, single‐rater
+  irr::icc(rating_mat,
+           model = "twoway",
+           type  = "agreement",
+           unit  = "single")
 }
+
+#-- Compute for each group --------------------------------------------------
+icc_students     <- calculate_group_icc(df_long, "Student")
+icc_experts      <- calculate_group_icc(df_long, "Expert")
+icc_autograders  <- calculate_group_icc(df_long, "Auto-grader")
+
+#-- View the results --------------------------------------------------------
+print(icc_students)
+print(icc_experts)
+print(icc_autograders)
 ```
 
 ```{r}
-# Calculate ICC for each group and feature
-icc_results <- list()
+#| label: icc-within-group-table-overall-features
+#| echo: FALSE
 
-# Students
-icc_results$students <- map_df(
-  rating_features,
-  ~ calculate_icc(df_long, student_raters, .x)
+# build a summary tibble with combined CI column
+icc_summary <- tibble(
+  `Rater Group` = c("Students", "Experts", "Auto-graders"),
+  ICC            = c(icc_students$value,
+                     icc_experts$value,
+                     icc_autograders$value),
+  LowerCI        = c(icc_students$lbound,
+                     icc_experts$lbound,
+                     icc_autograders$lbound),
+  UpperCI        = c(icc_students$ubound,
+                     icc_experts$ubound,
+                     icc_autograders$ubound)
 ) %>%
-  mutate(Group = "Students")
-
-# Experts
-icc_results$experts <- map_df(
-  rating_features,
-  ~ calculate_icc(df_long, expert_raters, .x)
-) %>%
-  mutate(Group = "Experts")
-
-# Auto-graders
-icc_results$auto <- map_df(
-  rating_features,
-  ~ calculate_icc(df_long, auto_raters, .x)
-) %>%
-  mutate(Group = "Auto-graders")
-
-# Combine results
-icc_combined <- bind_rows(icc_results)
-
-# Create visualization
-p_icc_within <- ggplot(
-  icc_combined,
-  aes(x = Feature, y = ICC2k, color = Group, group = Group)
-) +
-  geom_point(size = 3, position = position_dodge(width = 0.3)) +
-  geom_errorbar(aes(ymin = ICC2k_lower, ymax = ICC2k_upper),
-    width = 0.2, position = position_dodge(width = 0.3)
-  ) +
-  geom_hline(
-    yintercept = 0.6, linetype = "dashed", color = brand_colors$alert_red,
-    size = 1, alpha = 0.7
-  ) +
-  scale_color_manual(values = c(
-    "Students" = brand_colors$supporting_blue,
-    "Experts" = brand_colors$primary_navy,
-    "Auto-graders" = brand_colors$accent_yellow
-  )) +
-  labs(
-    title = "Within-Group Inter-Rater Reliability",
-    subtitle = "ICC(2,k) with 95% confidence intervals; dashed line indicates ICC = 0.60 threshold",
-    x = "Feature",
-    y = "ICC(2,k)",
-    color = "Rater Group"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  coord_cartesian(ylim = c(0, 1))
-
-print(p_icc_within)
-
-# Create summary table
-icc_table <- icc_combined %>%
   mutate(
-    ICC_CI = sprintf("%.3f [%.3f, %.3f]", ICC2k, ICC2k_lower, ICC2k_upper),
-    Significance = ifelse(p_value < 0.001, "***",
-      ifelse(p_value < 0.01, "**",
-        ifelse(p_value < 0.05, "*", "ns")
-      )
+    `95% CI` = sprintf("(%0.3f–%0.3f)", LowerCI, UpperCI),
+    Interpretation = case_when(
+      ICC < 0.50               ~ "Poor agreement",
+      ICC < 0.75               ~ "Moderate agreement",
+      ICC < 0.90               ~ "Good agreement",
+      TRUE                     ~ "Excellent agreement"
     )
   ) %>%
-  select(Feature, Group, `ICC(2,k) [95% CI]` = ICC_CI, Sig = Significance) %>%
-  pivot_wider(names_from = Group, values_from = c(`ICC(2,k) [95% CI]`, Sig)) %>%
-  select(Feature, contains("Students"), contains("Experts"), contains("Auto"))
+  select(`Rater Group`, ICC, `95% CI`, Interpretation)
 
-kable(icc_table,
-  caption = "Table 3. Within-group inter-rater reliability (ICC(2,k)) by feature",
-  format = "latex",
-  booktabs = TRUE
-) %>%
-  kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+# render as a gt table
+icc_summary %>%
+  gt() %>%
+  fmt_number(
+    columns = "ICC",
+    decimals = 3
+  ) %>%
+  cols_label(
+    ICC           = "ICC(A,1)",
+    `95% CI`      = "(95% CI)",
+    Interpretation = "Interpretation"
+  ) %>%
+  tab_header(
+    title = "Within‐Group ICC(A,1) Results"
+  )
 ```
+
+#### Interpretation
+
+* **Students** (ICC = `r sprintf("%.3f", icc_summary$`ICC(A,1)`[1])`, 95% CI \[`r sprintf("%.3f", icc_summary$`95% CI Lower`[1])`–`r sprintf("%.3f", icc_summary$`95% CI Upper`[1])`])
+Indicates *poor agreement* among student raters.
+
+* **Experts** (ICC = `r sprintf("%.3f", icc_summary$`ICC(A,1)`[2])`, 95% CI \[`r sprintf("%.3f", icc_summary$`95% CI Lower`[2])`–`r sprintf("%.3f", icc_summary$`95% CI Upper`[2])`])
+Indicates *poor agreement* among expert raters.
+
+* **Auto-graders** (ICC = `r sprintf("%.3f", icc_summary$`ICC(A,1)`[3])`, 95% CI \[`r sprintf("%.3f", icc_summary$`95% CI Lower`[3])`–`r sprintf("%.3f", icc_summary$`95% CI Upper`[3])`])
+Indicates *moderate agreement*, outperforming humans but still below “good.”
+
+All three groups fall below the conventional **0.75** threshold for “good” reliability; auto-graders show the highest consistency, followed by students, with experts showing the greatest variability.
+
+### 3.1. Within-Group Reliability (Cont'd for each feature category)
+
+```{r}
+# Function to compute ICC for each feature category
+icc_by_feature <- function(df, group_name, feat) {
+  mat <- df %>%
+    filter(rater_type_detailed == group_name, feature == feat) %>%
+    mutate(subject = paste(index, model, sep = "_")) %>%
+    select(subject, rater_name, rating) %>%
+    pivot_wider(names_from  = rater_name, values_from = rating) %>%
+    select(-subject) %>%
+    as.matrix()
+  
+  out <- irr::icc(mat,
+                  model = "twoway",
+                  type  = "agreement",
+                  unit  = "single")
+  
+  tibble(
+    Group    = group_name,
+    Feature  = feat,
+    ICC      = out$value,
+    LowerCI  = out$lbound,
+    UpperCI  = out$ubound
+  )
+}
+
+# Define groups and features
+groups   <- c("Student", "Expert", "Auto-grader")
+features <- unique(df_long$feature)
+
+# Compute ICC for each combination
+icc_feature_all <- map_dfr(groups, function(g) {
+  map_dfr(features, function(f) icc_by_feature(df_long, g, f))
+})
+
+```
+
+
+```{r}
+#| label: icc-feature-table
+#| echo: FALSE
+
+icc_feature_all %>%
+  arrange(Group, Feature) %>%
+  # create a combined CI column and drop the separate bounds
+  mutate(
+    `95% CI` = sprintf("(%0.3f–%0.3f)", LowerCI, UpperCI)
+  ) %>%
+  select(Group, Feature, ICC, `95% CI`) %>%
+  gt(
+    rowname_col   = "Feature",
+    groupname_col = "Group"
+  ) %>%
+  fmt_number(
+    columns = "ICC",
+    decimals = 3
+  ) %>%
+  cols_label(
+    ICC   = "ICC(A,1)",
+    `95% CI` = "(95% CI)"
+  ) %>%
+  tab_header(
+    title = "Feature‐Wise ICC(A,1) by Rater Group"
+  )
+
+```
+
+
+#### Interpretation
+
+* **Students**
+  
+  * **Overall** ICC = `r sprintf("%.3f", icc_overall$icc[icc_overall$group=="Student"])`.
+* **Highest**: `r icc_feature_all %>% filter(Group=="Student") %>% slice_max(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Student") %>% slice_max(ICC, n = 1) %>% pull(ICC))`).
+* **Lowest**: `r icc_feature_all %>% filter(Group=="Student") %>% slice_min(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Student") %>% slice_min(ICC, n = 1) %>% pull(ICC))`).
+Students agree best on **Educational Value**, and struggle most with **Confabulation Avoidance**.
+
+* **Experts**
+  
+  * **Overall** ICC = `r sprintf("%.3f", icc_overall$icc[icc_overall$group=="Expert"])`.
+* **Highest**: `r icc_feature_all %>% filter(Group=="Expert") %>% slice_max(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Expert") %>% slice_max(ICC, n = 1) %>% pull(ICC))`).
+* **Lowest**: `r icc_feature_all %>% filter(Group=="Expert") %>% slice_min(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Expert") %>% slice_min(ICC, n = 1) %>% pull(ICC))`).
+Experts show very low consistency overall, with especially poor agreement on **Conciseness** (even negative ICC).
+
+* **Auto‐graders**
+  
+  * **Overall** ICC = `r sprintf("%.3f", icc_overall$icc[icc_overall$group=="Auto-grader"])`.
+* **Highest**: `r icc_feature_all %>% filter(Group=="Auto-grader") %>% slice_max(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Auto-grader") %>% slice_max(ICC, n = 1) %>% pull(ICC))`).
+* **Lowest**: `r icc_feature_all %>% filter(Group=="Auto-grader") %>% slice_min(ICC, n = 1) %>% pull(Feature)`
+(ICC = `r sprintf("%.3f", icc_feature_all %>% filter(Group=="Auto-grader") %>% slice_min(ICC, n = 1) %>% pull(ICC))`).
+Auto‐graders are most consistent on **Completeness** and least on **Readability**.
+
+> **Take‐away:**
+  > Breaking ICC down by feature reveals specific dimensions where raters excel or falter, guiding rubric improvements and training priorities.
+
+
 
 ### 3.2 Between-Group Reliability
 
