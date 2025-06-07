@@ -24,6 +24,7 @@ wheels/
 
 # Data
 data/
+figures/
 outputs/
 logs/
 
@@ -43,3 +44,4 @@ scripts/test.py
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
 
+.Rproj.user
