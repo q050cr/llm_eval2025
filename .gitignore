@@ -25,6 +25,7 @@ wheels/
 # Data
 data/
 figures/
+notebooks/stats_analysis_files/
 outputs/
 logs/
 
