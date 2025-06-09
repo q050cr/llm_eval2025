@@ -6,13 +6,16 @@ format:
   html:
     toc: true
     toc-depth: 3
+    number-sections: false
     code-fold: true
+    code-tools: true
+    code-summary: "Show the code"
     theme: cosmo
   pdf:
     toc: true
-    number-sections: true
+    number-sections: false
     colorlinks: true
-bibliography: references.bib
+    echo: false
 ---
 
 ```{r setup, include=FALSE}
@@ -44,7 +47,7 @@ library(see)
 
 # Set global options
 knitr::opts_chunk$set(
-  echo = TRUE,
+  # echo = TRUE,
   warning = FALSE,
   message = FALSE,
   fig.width = 10,
@@ -226,7 +229,6 @@ For instance, a study analyzing patient information sheets found that the mean F
 
 ```{r}
 #| label: fn-readability-metrics
-#| echo: false
 
 clean_text_for_readability <- function(text) {
   text %>%
@@ -280,7 +282,6 @@ compute_readability_raw <- function(texts) {
 
 ```{r}
 #| label: compare-cleaned-text-stats-with-raw
-#| echo: false
 #| include: false
 
 # Test on a few more samples to see if the pattern holds
@@ -520,7 +521,6 @@ p
 
 ```{r}
 #| label: wc-stats-calc
-#| echo: False
 
 # Compute word counts for each unique response, after cleaning markdown
 wordcount_scores <- unique_responses %>%
@@ -532,7 +532,6 @@ wordcount_scores <- unique_responses %>%
 
 ```{r}
 #| label: wc-by-model
-#| echo: False
 
 wc_by_model <- wordcount_scores %>%
   group_by(model) %>%
@@ -845,9 +844,6 @@ ggsave(
 
 ```{r}
 #| label: feature-stats
-#| echo: FALSE
-library(dplyr)
-library(tidyr)
 
 # 1. Numeric summaries
 feature_stats <- df_long %>%
@@ -887,7 +883,6 @@ best_worst <- feature_stats %>%
 
 ```{r}
 #| label: feature-table-wide
-#| echo: FALSE
 
 feature_wide %>%
   gt(rowname_col = "feature") %>%
@@ -907,7 +902,6 @@ feature_wide %>%
 
 ```{r}
 #| label: best-worst-ci
-#| echo: FALSE
 
 # calculated feature_stats and best_worst before:
 # feature_stats has columns: model, feature, mean_rating, ci_lower, ci_upper
@@ -1119,7 +1113,6 @@ print(icc_autograders)
 
 ```{r}
 #| label: icc-within-group-table-overall-features
-#| echo: FALSE
 
 # build a summary tibble with combined CI column
 icc_summary <- tibble(
@@ -1208,7 +1201,6 @@ icc_feature_all <- map_dfr(groups, function(g) {
 
 ```{r}
 #| label: icc-feature-table
-#| echo: FALSE
 
 icc_feature_all %>%
   arrange(Group, Feature) %>%
@@ -1250,7 +1242,6 @@ We’ll use **ICC(2,k)** (two‐way random, absolute‐agreement, *average*‐me
 
 ```{r}
 #| label: between-setup
-#| echo: FALSE
 
 # helper: compute ICC(2,k) for feature `feat` and rater types `groups`
 compute_icc_avg <- function(df, feat, groups) {
@@ -1313,7 +1304,6 @@ between_icc <- between_icc %>%
 
 ```{r}
 #| label: between-table
-#| echo: FALSE
 
 between_icc %>%
   gt(rowname_col = "Feature") %>%
@@ -1330,7 +1320,6 @@ between_icc %>%
 
 ```{r}
 #| label: plot-betweengrp-styled
-#| echo: FALSE
 
 features <- unique(df_long$feature)
 between_icc_num <- map_dfr(features, function(feat) {
