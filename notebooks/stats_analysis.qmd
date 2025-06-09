@@ -16,7 +16,7 @@ bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
-# Load required libraries
+#| label: Load-required-libraries
 library(tidyverse)
 library(knitr)
 library(kableExtra)
@@ -101,7 +101,7 @@ rating_features <- c(
 
 
 ```{r load-data}
-# Load the data
+#| label: Load-data
 df <- read_csv("./data/data_preparation/individual_ratings_20250606_115527.csv", show_col_types = FALSE)
 
 # Create rater type categories
@@ -138,6 +138,7 @@ df_long <- df %>%
 ### 1.1 Response Characteristics
 
 ```{r response-readability}
+#| label: unique-responses
 
 # Prepare unique responses: collapse across raters to one per query/model
 unique_responses <- df %>%
@@ -150,32 +151,6 @@ unique_responses <- df %>%
       "Lifestyle & Daily Activity"
     ))
   )
-
-# Calculate readability metrics for responses
-readability_metrics <- unique_responses %>%
-  group_by(model) %>%
-  summarise(
-    n_responses = n_distinct(query_id),
-    avg_word_count = mean(str_count(response, "\\S+"), na.rm = TRUE),
-    sd_word_count = sd(str_count(response, "\\S+"), na.rm = TRUE),
-    avg_sentences = mean(str_count(response, "[.!?]+"), na.rm = TRUE),
-    sd_sentences = sd(str_count(response, "[.!?]+"), na.rm = TRUE)
-  )
-
-# Create table
-readability_table <- readability_metrics %>%
-  mutate(
-    Word_Count = sprintf("%.1f ± %.1f", avg_word_count, sd_word_count),
-    Sentences = sprintf("%.1f ± %.1f", avg_sentences, sd_sentences)
-  ) %>%
-  select(Model = model, `Response Count` = n_responses, `Word Count` = Word_Count, Sentences)
-
-kable(readability_table,
-  caption = "Table 1. Response characteristics by model (mean ± SD)",
-  # format = "latex",
-  booktabs = TRUE
-) %>%
-  kable_styling(latex_options = c("striped", "hold_position"))
 ```
 
 
@@ -194,7 +169,7 @@ We calculate and present readability metrics for medical text responses using th
   2. **Per model and category**
   
 
-#### Flesch-Based Readability Formulas
+#### A) Flesch-Based Readability Formulas
 
 1. **Flesch Reading Ease (FRE)**
 
@@ -239,9 +214,9 @@ For instance, a study analyzing patient information sheets found that the mean F
 clean_text_for_readability <- function(text) {
   text %>%
     # Remove markdown formatting
-    str_replace_all("\\*\\*(.*?)\\*\\*", "\\1") %>%  # Remove **bold**
-    str_replace_all("###\\s*", "") %>%               # Remove ### headers
-    str_replace_all("#\\s*", "") %>%                 # Remove # headers
+    str_replace_all("\\*\\*(.*?)\\*\\*", "\\1") %>% # Remove **bold**
+    str_replace_all("###\\s*", "") %>% # Remove ### headers
+    str_replace_all("#\\s*", "") %>% # Remove # headers
     # Clean up special characters that might confuse readability
     str_replace_all("≤", "less than or equal to") %>%
     # Remove extra whitespace
@@ -262,7 +237,7 @@ compute_readability <- function(texts) {
 
 # Original function (no cleaning)
 compute_readability_raw <- function(texts) {
-  txt_quanteda <- quanteda::corpus(texts)  # No cleaning step
+  txt_quanteda <- quanteda::corpus(texts) # No cleaning step
   stats <- quanteda.textstats::textstat_readability(
     txt_quanteda,
     measure = c("Flesch", "Flesch.Kincaid", "FOG", "SMOG", "Coleman.Liau.short", "ARI")
@@ -278,15 +253,15 @@ compute_readability_raw <- function(texts) {
 #| include: false
 
 # Test on a few more samples to see if the pattern holds
-test_samples <- head(unique_responses$response, 5)  # Test first 5 responses
+test_samples <- head(unique_responses$response, 5) # Test first 5 responses
 
 # Compare raw vs cleaned across multiple texts
-comparison_results <- map_dfr(1:length(test_samples), ~{
+comparison_results <- map_dfr(1:length(test_samples), ~ {
   text <- test_samples[.x]
-  
+
   raw <- compute_readability_raw(text) %>% mutate(version = "raw", sample = .x)
   cleaned <- compute_readability(clean_text_for_readability(text)) %>% mutate(version = "cleaned", sample = .x)
-  
+
   bind_rows(raw, cleaned)
 })
 
@@ -297,7 +272,7 @@ res_cleaning <- comparison_results %>%
   mutate(
     flesch_diff = abs(Flesch_raw - Flesch_cleaned),
     fk_diff = abs(Flesch.Kincaid_raw - Flesch.Kincaid_cleaned)
-  ) 
+  )
 
 # no diffs observed
 ```
@@ -322,18 +297,18 @@ read_by_model <- readability_scores %>%
   summarise(
     # Count total responses
     n_responses = n(),
-    `Flesch Ease`    = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
-    `Flesch K-G`     = sprintf("%.1f ± %.1f", mean(`Flesch.Kincaid`, na.rm = TRUE), sd(`Flesch.Kincaid`, na.rm = TRUE)),
-    `Gunning Fog`    = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
-    SMOG             = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
-    `Coleman-Liau`   = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
-    ARI              = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
+    `Flesch Ease` = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
+    `Flesch K-G` = sprintf("%.1f ± %.1f", mean(`Flesch.Kincaid`, na.rm = TRUE), sd(`Flesch.Kincaid`, na.rm = TRUE)),
+    `Gunning Fog` = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
+    SMOG = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
+    `Coleman-Liau` = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
+    ARI = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
   )
 
-read_by_model %>% 
+read_by_model %>%
   mutate(
     model = tools::toTitleCase(model)
-  ) %>% 
+  ) %>%
   gt() %>%
   tab_header(title = "Table 1: Readability Metrics by Model") %>%
   fmt_missing(missing_text = "-")
@@ -372,7 +347,7 @@ p <- ggplot(readability_scores, aes(x = model, y = Flesch.Kincaid, fill = model)
   theme(
     # axis.text.x      = element_text(angle = 45, hjust = 1),
     # panel.grid.minor = element_blank(),
-    legend.position  = "none"
+    legend.position = "none"
   )
 
 p
@@ -386,18 +361,18 @@ read_by_category_model <- readability_scores %>%
   group_by(category, model) %>%
   summarise(
     n_responses = n(),
-    `Flesch Ease`    = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
-    `Flesch K-G`     = sprintf("%.1f ± %.1f", mean(Flesch.Kincaid, na.rm = TRUE), sd(Flesch.Kincaid, na.rm = TRUE)),
-    `Gunning Fog`    = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
-    SMOG             = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
-    `Coleman-Liau`   = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
-    ARI              = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
+    `Flesch Ease` = sprintf("%.1f ± %.1f", mean(Flesch, na.rm = TRUE), sd(Flesch, na.rm = TRUE)),
+    `Flesch K-G` = sprintf("%.1f ± %.1f", mean(Flesch.Kincaid, na.rm = TRUE), sd(Flesch.Kincaid, na.rm = TRUE)),
+    `Gunning Fog` = sprintf("%.1f ± %.1f", mean(FOG, na.rm = TRUE), sd(FOG, na.rm = TRUE)),
+    SMOG = sprintf("%.1f ± %.1f", mean(SMOG, na.rm = TRUE), sd(SMOG, na.rm = TRUE)),
+    `Coleman-Liau` = sprintf("%.1f ± %.1f", mean(`Coleman.Liau.short`, na.rm = TRUE), sd(`Coleman.Liau.short`, na.rm = TRUE)),
+    ARI = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
   )
 
-read_by_category_model %>% 
+read_by_category_model %>%
   mutate(
     model = tools::toTitleCase(model)
-  ) %>% 
+  ) %>%
   gt() %>%
   tab_header(title = "Table 2: Readability Metrics by Category and Model") %>%
   fmt_missing(missing_text = "-")
@@ -410,7 +385,7 @@ read_by_category_model %>%
 
 ggplot(readability_scores, aes(x = Flesch, fill = model)) +
   geom_density(alpha = 0.5) +
-  facet_wrap(~ category) +
+  facet_wrap(~category) +
   labs(
     title = "Flesch Reading Ease across Models by Category",
     x = "Flesch Reading Ease",
@@ -429,7 +404,7 @@ p <- ggplot(readability_scores, aes(x = model, y = Flesch.Kincaid, fill = model)
   geom_violin(trim = FALSE, alpha = 0.6) +
   geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
   stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
-  facet_wrap(~ category, ncol = 1) +
+  facet_wrap(~category, ncol = 1) +
   labs(
     title    = "Flesch Reading Ease by Model and Category",
     subtitle = "Violin + individual scores + mean",
@@ -441,10 +416,59 @@ p <- ggplot(readability_scores, aes(x = model, y = Flesch.Kincaid, fill = model)
   theme(
     # axis.text.x      = element_text(angle = 45, hjust = 1),
     # panel.grid.minor = element_blank(),
-    legend.position  = "none"
+    legend.position = "none"
   )
 
 p
+```
+
+#### B) Word Count
+
+```{r}
+#| label: wc-stats-calc
+#| echo: False
+
+# Compute word counts for each unique response, after cleaning markdown
+wordcount_scores <- unique_responses %>%
+  mutate(
+    clean_response = clean_text_for_readability(response),
+    WordCount      = str_count(clean_response, "\\S+")
+  )
+```
+
+```{r}
+#| label: wc-by-model
+#| echo: False
+
+wc_by_model <- wordcount_scores %>%
+  group_by(model) %>%
+  summarise(
+    `Response Count` = n(),
+    `Word Count`     = sprintf("%.1f ± %.1f", mean(WordCount, na.rm = TRUE), sd(WordCount, na.rm = TRUE))
+  )
+
+gt(wc_by_model) %>%
+  tab_header(title = "Table 3: Response Characteristics by Model (Word Count)") %>%
+  fmt_missing(missing_text = "-")
+```
+
+```{r}
+#| label: wc-violin-model
+
+ggplot(wordcount_scores, aes(x = model, y = WordCount, fill = model)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +
+  geom_jitter(width = 0.2, size = 1.2, alpha = 0.6) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3, fill = "white") +
+  labs(
+    title = "Word Count by Model",
+    subtitle = "Violin + Jittered Points + Mean",
+    x = NULL, y = "Word Count"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(), legend.position = "none"
+  )
 ```
 
 
@@ -607,7 +631,7 @@ rater_table <- rater_summary %>%
 
 kableExtra::kable(rater_table,
   caption = "Table 2. Individual rater summary statistics",
-  #format = "latex",
+  # format = "latex",
   booktabs = TRUE
 ) %>%
   kable_styling(latex_options = c("striped", "hold_position"))
@@ -689,8 +713,10 @@ feature_wide <- feature_stats %>%
     Mean_CI = sprintf("%0.2f (%0.2f–%0.2f)", mean_rating, ci_lower, ci_upper)
   ) %>%
   select(feature, model, Mean_CI) %>%
-  pivot_wider(names_from  = model,
-              values_from = Mean_CI)
+  pivot_wider(
+    names_from = model,
+    values_from = Mean_CI
+  )
 
 # 3. Identify highest and lowest feature for each model
 best_worst <- feature_stats %>%
@@ -737,27 +763,36 @@ best_worst_ci <- best_worst %>%
     feature_stats %>% select(model, feature, ci_lower, ci_upper),
     by = c("model", "Highest" = "feature")
   ) %>%
-  rename(high_ci_lower = ci_lower,
-         high_ci_upper = ci_upper) %>%
+  rename(
+    high_ci_lower = ci_lower,
+    high_ci_upper = ci_upper
+  ) %>%
   left_join(
     feature_stats %>% select(model, feature, ci_lower, ci_upper),
     by = c("model", "Lowest" = "feature")
   ) %>%
-  rename(low_ci_lower = ci_lower,
-         low_ci_upper = ci_upper) %>%
+  rename(
+    low_ci_lower = ci_lower,
+    low_ci_upper = ci_upper
+  ) %>%
   mutate(
-    `Top Feature (Mean [95% CI])`    = sprintf("%s (%.2f [%.2f–%.2f])",
-                                              Highest, Highest_val, high_ci_lower, high_ci_upper),
-    `Bottom Feature (Mean [95% CI])` = sprintf("%s (%.2f [%.2f–%.2f])",
-                                              Lowest, Lowest_val, low_ci_lower, low_ci_upper),
+    `Top Feature (Mean [95% CI])` = sprintf(
+      "%s (%.2f [%.2f–%.2f])",
+      Highest, Highest_val, high_ci_lower, high_ci_upper
+    ),
+    `Bottom Feature (Mean [95% CI])` = sprintf(
+      "%s (%.2f [%.2f–%.2f])",
+      Lowest, Lowest_val, low_ci_lower, low_ci_upper
+    ),
     # Capitalize model names
     Model = recode(model,
-                   anthropic  = "Anthropic",
-                   deepseek   = "DeepSeek",
-                   google     = "Google",
-                   openai     = "OpenAI",
-                   perplexity = "Perplexity",
-                   xai        = "XAI")
+      anthropic  = "Anthropic",
+      deepseek   = "DeepSeek",
+      google     = "Google",
+      openai     = "OpenAI",
+      perplexity = "Perplexity",
+      xai        = "XAI"
+    )
   ) %>%
   select(Model, `Top Feature (Mean [95% CI])`, `Bottom Feature (Mean [95% CI])`)
 
@@ -765,9 +800,9 @@ best_worst_ci <- best_worst %>%
 best_worst_ci %>%
   gt() %>%
   cols_label(
-    Model                           = "Model",
-    `Top Feature (Mean [95% CI])`   = "Highest",
-    `Bottom Feature (Mean [95% CI])`= "Lowest"
+    Model = "Model",
+    `Top Feature (Mean [95% CI])` = "Highest",
+    `Bottom Feature (Mean [95% CI])` = "Lowest"
   ) %>%
   tab_header(
     title = "Best‐ and Worst‐Rated Features by Model"
@@ -876,29 +911,34 @@ We compute the single‐measure, absolute‐agreement ICC (ICC(A,1)) for each ra
 #-- Function to compute ICC for a given rater group ------------------------
 calculate_group_icc <- function(df_long, group_name) {
   df_long %>%
-    filter(rater_type_detailed == group_name) %>% 
-    # make a unique "subject" ID so that each row in the wide matrix is one 
+    filter(rater_type_detailed == group_name) %>%
+    # make a unique "subject" ID so that each row in the wide matrix is one
     # (question × model × feature) combination
-    mutate(subject = paste(index, model, feature, sep = "_")) %>% 
-    select(subject, rater_name, rating) %>% 
+    mutate(subject = paste(index, model, feature, sep = "_")) %>%
+    select(subject, rater_name, rating) %>%
     # pivot to wide: one row per subject, one column per rater
-    pivot_wider(names_from  = rater_name,
-                values_from = rating) -> wide_df
+    pivot_wider(
+      names_from = rater_name,
+      values_from = rating
+    ) -> wide_df
 
   # drop the subject column and coerce to a numeric matrix
-  rating_mat <- wide_df %>% select(-subject) %>% as.matrix()
+  rating_mat <- wide_df %>%
+    select(-subject) %>%
+    as.matrix()
 
   # compute ICC: two‐way random, absolute agreement, single‐rater
   irr::icc(rating_mat,
-           model = "twoway",
-           type  = "agreement",
-           unit  = "single")
+    model = "twoway",
+    type  = "agreement",
+    unit  = "single"
+  )
 }
 
 #-- Compute for each group --------------------------------------------------
-icc_students     <- calculate_group_icc(df_long, "Student")
-icc_experts      <- calculate_group_icc(df_long, "Expert")
-icc_autograders  <- calculate_group_icc(df_long, "Auto-grader")
+icc_students <- calculate_group_icc(df_long, "Student")
+icc_experts <- calculate_group_icc(df_long, "Expert")
+icc_autograders <- calculate_group_icc(df_long, "Auto-grader")
 
 #-- View the results --------------------------------------------------------
 print(icc_students)
@@ -913,23 +953,29 @@ print(icc_autograders)
 # build a summary tibble with combined CI column
 icc_summary <- tibble(
   `Rater Group` = c("Students", "Experts", "Auto-graders"),
-  ICC            = c(icc_students$value,
-                     icc_experts$value,
-                     icc_autograders$value),
-  LowerCI        = c(icc_students$lbound,
-                     icc_experts$lbound,
-                     icc_autograders$lbound),
-  UpperCI        = c(icc_students$ubound,
-                     icc_experts$ubound,
-                     icc_autograders$ubound)
+  ICC = c(
+    icc_students$value,
+    icc_experts$value,
+    icc_autograders$value
+  ),
+  LowerCI = c(
+    icc_students$lbound,
+    icc_experts$lbound,
+    icc_autograders$lbound
+  ),
+  UpperCI = c(
+    icc_students$ubound,
+    icc_experts$ubound,
+    icc_autograders$ubound
+  )
 ) %>%
   mutate(
     `95% CI` = sprintf("(%0.3f–%0.3f)", LowerCI, UpperCI),
     Interpretation = case_when(
-      ICC < 0.50               ~ "Poor agreement",
-      ICC < 0.75               ~ "Moderate agreement",
-      ICC < 0.90               ~ "Good agreement",
-      TRUE                     ~ "Excellent agreement"
+      ICC < 0.50 ~ "Poor agreement",
+      ICC < 0.75 ~ "Moderate agreement",
+      ICC < 0.90 ~ "Good agreement",
+      TRUE ~ "Excellent agreement"
     )
   ) %>%
   select(`Rater Group`, ICC, `95% CI`, Interpretation)
@@ -942,8 +988,8 @@ icc_summary %>%
     decimals = 3
   ) %>%
   cols_label(
-    ICC           = "ICC(A,1)",
-    `95% CI`      = "(95% CI)",
+    ICC = "ICC(A,1)",
+    `95% CI` = "(95% CI)",
     Interpretation = "Interpretation"
   ) %>%
   tab_header(
@@ -973,15 +1019,16 @@ icc_by_feature <- function(df, group_name, feat) {
     filter(rater_type_detailed == group_name, feature == feat) %>%
     mutate(subject = paste(index, model, sep = "_")) %>%
     select(subject, rater_name, rating) %>%
-    pivot_wider(names_from  = rater_name, values_from = rating) %>%
+    pivot_wider(names_from = rater_name, values_from = rating) %>%
     select(-subject) %>%
     as.matrix()
-  
+
   out <- irr::icc(mat,
-                  model = "twoway",
-                  type  = "agreement",
-                  unit  = "single")
-  
+    model = "twoway",
+    type  = "agreement",
+    unit  = "single"
+  )
+
   tibble(
     Group    = group_name,
     Feature  = feat,
@@ -992,7 +1039,7 @@ icc_by_feature <- function(df, group_name, feat) {
 }
 
 # Define groups and features
-groups   <- c("Student", "Expert", "Auto-grader")
+groups <- c("Student", "Expert", "Auto-grader")
 features <- unique(df_long$feature)
 
 # Compute ICC for each combination
@@ -1023,7 +1070,7 @@ icc_feature_all %>%
     decimals = 3
   ) %>%
   cols_label(
-    ICC   = "ICC(A,1)",
+    ICC = "ICC(A,1)",
     `95% CI` = "(95% CI)"
   ) %>%
   tab_header(
@@ -1069,103 +1116,150 @@ Auto‐graders are most consistent on **Completeness** and least on **Readabilit
 
 ### 3.2 Between-Group Reliability
 
-```{r between-group-icc}
-# Calculate ICC for different group combinations
-calculate_between_group_icc <- function(data, group1_raters, group2_raters, feature_name, group_label) {
-  all_raters <- c(group1_raters, group2_raters)
+We’ll use **ICC(2,k)** (two‐way random, absolute‐agreement, *average*‐measure) to ask how reliable the *mean* rating is when we pool different sets of raters:
 
-  icc_data <- data %>%
-    filter(rater_name %in% all_raters, feature == feature_name) %>%
-    select(query_id, rater_name, rating) %>%
-    pivot_wider(names_from = rater_name, values_from = rating) %>%
-    select(-query_id) %>%
+1. **All 12 raters** (3 Students + 3 Experts + 6 Auto‐graders)  
+2. **Students + Experts** (6 human raters)  
+3. **Experts + Auto‐graders** (9 raters)
+
+```{r}
+#| label: between-setup
+#| echo: FALSE
+
+# helper: compute ICC(2,k) for feature `feat` and rater types `groups`
+compute_icc_avg <- function(df, feat, groups) {
+  df %>%
+    filter(feature == feat, rater_type_detailed %in% groups) %>%
+    mutate(subject = paste(index, model, sep = "_")) %>%
+    select(subject, rater_name, rating) %>%
+    pivot_wider(names_from = rater_name, values_from = rating) -> wide
+
+  mat <- wide %>%
+    select(-subject) %>%
     as.matrix()
-
-  if (ncol(icc_data) > 1 && nrow(icc_data) > 1) {
-    icc_result <- ICC(icc_data)
-    return(data.frame(
-      Feature = feature_name,
-      Comparison = group_label,
-      ICC2k = icc_result$results["ICC2k", "ICC"],
-      ICC2k_lower = icc_result$results["ICC2k", "lower bound"],
-      ICC2k_upper = icc_result$results["ICC2k", "upper bound"],
-      p_value = icc_result$results["ICC2k", "p"]
-    ))
-  } else {
-    return(data.frame(
-      Feature = feature_name,
-      Comparison = group_label,
-      ICC2k = NA,
-      ICC2k_lower = NA,
-      ICC2k_upper = NA,
-      p_value = NA
-    ))
-  }
+  irr::icc(mat, model = "twoway", type = "agreement", unit = "average")
 }
 
-# Calculate between-group ICCs
-between_group_results <- list()
+features <- unique(df_long$feature)
 
-# Students vs Experts
-between_group_results$stud_exp <- map_df(
-  rating_features,
-  ~ calculate_between_group_icc(df_long, student_raters, expert_raters, .x, "Students vs Experts")
-)
+between_icc <- map_dfr(features, function(feat) {
+  all12 <- compute_icc_avg(df_long, feat, c("Student", "Expert", "Auto-grader"))
+  se <- compute_icc_avg(df_long, feat, c("Student", "Expert"))
+  ea <- compute_icc_avg(df_long, feat, c("Expert", "Auto-grader"))
+  tibble(
+    Feature               = feat,
+    All12                 = all12$value,
+    All12_Lower           = all12$lbound,
+    All12_Upper           = all12$ubound,
+    Students_Experts      = se$value,
+    SE_Lower              = se$lbound,
+    SE_Upper              = se$ubound,
+    Experts_Auto          = ea$value,
+    EA_Lower              = ea$lbound,
+    EA_Upper              = ea$ubound
+  )
+})
 
-# Human (all) vs Auto
-human_raters <- c(student_raters, expert_raters)
-between_group_results$human_auto <- map_df(
-  rating_features,
-  ~ calculate_between_group_icc(df_long, human_raters, auto_raters, .x, "Human vs Auto")
-)
+# combine into human‐readable strings
+between_icc <- between_icc %>%
+  mutate(
+    `All 12 Raters`        = sprintf("%0.3f (%0.3f–%0.3f)", All12, All12_Lower, All12_Upper),
+    `Students + Experts`   = sprintf("%0.3f (%0.3f–%0.3f)", Students_Experts, SE_Lower, SE_Upper),
+    `Experts + Auto`       = sprintf("%0.3f (%0.3f–%0.3f)", Experts_Auto, EA_Lower, EA_Upper)
+  ) %>%
+  select(Feature, `All 12 Raters`, `Students + Experts`, `Experts + Auto`)
+```
 
-# Experts vs Auto
-between_group_results$exp_auto <- map_df(
-  rating_features,
-  ~ calculate_between_group_icc(df_long, expert_raters, auto_raters, .x, "Experts vs Auto")
-)
+```{r}
+#| label: between-table
+#| echo: FALSE
 
-# All raters combined
-all_raters <- c(student_raters, expert_raters, auto_raters)
-between_group_results$all <- map_df(
-  rating_features,
-  ~ calculate_between_group_icc(df_long, all_raters, character(0), .x, "All Raters")
-)
+between_icc %>%
+  gt(rowname_col = "Feature") %>%
+  cols_label(
+    `All 12 Raters`      = "All 12 Raters",
+    `Students + Experts` = "Students + Experts",
+    `Experts + Auto`     = "Experts + Auto‐graders"
+  ) %>%
+  tab_header(
+    title = "Between‐Group ICC(2,k) by Feature"
+  )
+```
 
-# Combine results
-between_icc_combined <- bind_rows(between_group_results)
 
-# Create visualization
-p_icc_between <- ggplot(
-  between_icc_combined %>%
-    filter(Comparison != "All Raters"),
-  aes(x = Feature, y = ICC2k, color = Comparison, group = Comparison)
-) +
-  geom_point(size = 3, position = position_dodge(width = 0.3)) +
-  geom_errorbar(aes(ymin = ICC2k_lower, ymax = ICC2k_upper),
-    width = 0.2, position = position_dodge(width = 0.3)
+```{r}
+#| label: plot-betweengrp-styled
+#| echo: FALSE
+
+features <- unique(df_long$feature)
+between_icc_num <- map_dfr(features, function(feat) {
+  se <- compute_icc_avg(df_long, feat, c("Student", "Expert"))
+  ea <- compute_icc_avg(df_long, feat, c("Expert", "Auto-grader"))
+  tibble(
+    Feature               = feat,
+    `Students vs Experts` = se$value,
+    `Experts vs Auto`     = ea$value,
+    se_lower              = se$lbound,
+    se_upper              = se$ubound,
+    ea_lower              = ea$lbound,
+    ea_upper              = ea$ubound
+  )
+})
+
+between_long <- between_icc_num %>%
+  pivot_longer(
+    cols = c(`Students vs Experts`, `Experts vs Auto`),
+    names_to = "Comparison",
+    values_to = "ICC2k"
+  ) %>%
+  mutate(
+    lower = if_else(Comparison == "Students vs Experts", se_lower, ea_lower),
+    upper = if_else(Comparison == "Students vs Experts", se_upper, ea_upper)
+  )
+
+# styled plot
+ggplot(between_long, aes(x = Feature, y = ICC2k, color = Comparison, group = Comparison)) +
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+    width = 0.3, size = 0.8,
+    position = position_dodge(width = 0.5)
   ) +
+  geom_point(size = 4, position = position_dodge(width = 0.5)) +
   geom_hline(
-    yintercept = 0.6, linetype = "dashed", color = brand_colors$alert_red,
-    size = 1, alpha = 0.7
+    yintercept = 0.60, linetype = "dashed", linewidth = 1,
+    color = brand_colors$alert_red, alpha = 0.7
   ) +
   scale_color_manual(values = c(
     "Students vs Experts" = brand_colors$primary_navy,
-    "Human vs Auto" = brand_colors$supporting_blue,
-    "Experts vs Auto" = brand_colors$accent_yellow
+    "Experts vs Auto"     = brand_colors$accent_yellow
   )) +
   labs(
-    title = "Between-Group Inter-Rater Reliability",
-    subtitle = "ICC(2,k) for different rater group combinations",
-    x = "Feature",
-    y = "ICC(2,k)",
-    color = "Group Comparison"
+    title    = "Between‐Group Reliability Across Features",
+    subtitle = "ICC(2,k) for Students vs Experts and Experts vs Auto‐graders",
+    x        = "Feature",
+    y        = "ICC(2,k)",
+    color    = ""
   ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top",
+    panel.grid.major.y = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  ) +
   coord_cartesian(ylim = c(0, 1))
 
-print(p_icc_between)
 ```
+
+#### Comments on Usefulness
+
+* **Average‐measure ICC(2,k)** tells you how reliable the *mean* of *k* raters is, which naturally increases as you add more raters (since random error averages out).
+* As expected, pooling **all 12** yields the highest reliability for every feature.
+* The **Students + Experts** panel (6 human raters) shows noticeably lower ICCs than the full panel, highlighting the value of adding automated scores.
+* Combining **Experts + Auto‐graders** (9 raters) recovers much of the full‐panel reliability, suggesting auto‐graders complement expert raters well.
+
+> **Caveat:**  Because our *single‐measure* (ICC(2,1)) within‐group reliabilities were often only *fair* (≤0.5), these average‐measure ICCs should be interpreted with caution.  You're essentially demonstrating that *more* raters produce more reliable *means*—a well‐known statistical effect—rather than uncovering a deep alignment between groups.  If you wanted to know *how* well human consensus matches auto‐grader consensus *per se*, you'd instead compute ICC(2,1) on the two **group means** (one “human” mean vs. one “auto” mean), but that only makes sense if each group mean is itself reliable (which, here, is marginal for some features).
+
+---
 
 ## 4. Model Performance Comparison
 
@@ -1178,7 +1272,7 @@ fit_feature_lmm <- function(data, feature_name) {
     filter(feature == feature_name)
 
   # Fit the model with random intercepts for question and rater
-  model <- lmer(rating ~ model + (1 | query_id) + (1 | rater_name),
+  model <- lmer(rating ~ model + (1 | index) + (1 | rater_name),
     data = feature_data, REML = FALSE
   )
 
@@ -1186,13 +1280,14 @@ fit_feature_lmm <- function(data, feature_name) {
   model_summary <- summary(model)
 
   # Perform likelihood ratio test
-  null_model <- lmer(rating ~ 1 + (1 | query_id) + (1 | rater_name),
+  null_model <- lmer(rating ~ 1 + (1 | index) + (1 | rater_name),
     data = feature_data, REML = FALSE
   )
   lr_test <- anova(null_model, model)
 
   # Get estimated marginal means
-  emm <- emmeans(model, ~model)
+  # emm <- emmeans(model, ~model, lmerTest.limit = 4000, pbkrtest.limit = 4000)  # takes long time
+  emm <- suppressMessages(suppressWarnings(emmeans(model, ~model))) # approximate faster
   emm_df <- as.data.frame(emm)
 
   # Perform pairwise comparisons
@@ -1241,7 +1336,7 @@ if (length(significant_features) > 0) {
 
   p_emm <- ggplot(emm_data, aes(x = model, y = emmean, color = Feature)) +
     geom_point(position = position_dodge(width = 0.5), size = 3) +
-    geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL),
+    geom_errorbar(aes(ymin = asymp.LCL, ymax = asymp.UCL),
       position = position_dodge(width = 0.5), width = 0.3
     ) +
     facet_wrap(~Feature, scales = "free_x", ncol = 3) +
@@ -1270,7 +1365,674 @@ kable(feature_model_stats,
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
 
-Pr(>Chisq)`[2]
+### 4.2 Rater Type Effects
+
+```{r rater-type-effects}
+# Fit models including rater type as fixed effect
+fit_rater_type_lmm <- function(data, feature_name) {
+  feature_data <- data %>%
+    filter(feature == feature_name)
+  
+  # Fit the model with rater type
+  model <- lmer(rating ~ model * rater_type_detailed + (1|query_id) + (1|rater_name), 
+                data = feature_data, REML = FALSE)
+  
+  # Fit reduced model without interaction
+  model_no_int <- lmer(rating ~ model + rater_type_detailed + (1|query_id) + (1|rater_name), 
+                       data = feature_data, REML = FALSE)
+  
+  # Test interaction effect
+  interaction_test <- anova(model_no_int, model)
+  
+  return(list(
+    feature = feature_name,
+    model = model,
+    model_no_int = model_no_int,
+    interaction_p = interaction_test---
+      title: "LLM Performance in Clinical Question Answering: Results"
+    author: "Clinical Research Team"
+    date: "`r Sys.Date()`"
+    format:
+      html:
+      toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: cosmo
+    pdf:
+      toc: true
+    number-sections: true
+    colorlinks: true
+    bibliography: references.bib
+    ---
+      
+      ```{r setup, include=FALSE}
+    # Load required libraries
+    library(tidyverse)
+    library(knitr)
+    library(kableExtra)
+    library(ggplot2)
+    library(patchwork)
+    library(lme4)
+    library(lmerTest)
+    library(emmeans)
+    library(irr)
+    library(psych)
+    library(corrplot)
+    library(viridis)
+    library(ggsignif)
+    library(ggrepel)
+    library(factoextra)
+    library(dendextend)
+    library(quanteda)
+    library(readability)
+    library(cowplot)
+    library(broom.mixed)
+    library(performance)
+    library(see)
+    
+    # Set global options
+    knitr::opts_chunk$set(
+      echo = TRUE,
+      warning = FALSE,
+      message = FALSE,
+      fig.width = 10,
+      fig.height = 8,
+      dpi = 300
+    )
+    
+    # Set theme for all plots
+    theme_set(theme_minimal(base_size = 12) +
+                theme(
+                  panel.grid.minor = element_blank(),
+                  plot.title = element_text(size = 14, face = "bold"),
+                  axis.title = element_text(size = 12),
+                  legend.position = "bottom"
+                ))
+    
+    # Define color palettes based on the visualization playbook
+    brand_colors <- list(
+      primary_navy = "#2C4B73",
+      accent_yellow = "#F4C430",
+      supporting_blue = "#7BA7BC",
+      light_gray = "#E8E8E8",
+      white = "#FFFFFF",
+      alert_red = "#D73027",
+      success_green = "#1A9850"
+    )
+    
+    # AI company brand colors
+    ai_colors <- c(
+      "openai" = "#17A683",
+      "google" = "#528DD5",
+      "deepseek" = "#5370FE",
+      "perplexity" = "#278491",
+      "anthropic" = "#D5A583",
+      "xai" = "#000000"
+    )
+    
+    # Define rater groups
+    student_raters <- c("Isabel_LLM", "Jule_LLM", "Lasse_LLM")
+    expert_raters <- c("Christoph_LLM", "Musti_LLM", "Charlotte_LLM")
+    auto_raters <- c("autoLLM_gemini_2.5_pro", "autoLLM_gemini_2.0_flash", 
+                     "autoLLM_anthropic_somnet3.5", "autoLLM_anthropic_somnet4", 
+                     "autoLLM_openai_4o_strict", "autoLLM_openai_4o")
+    
+    # Define rating features
+    rating_features <- c("Appropriateness", "Comprehensibility", "Completeness", 
+                         "Conciseness", "Confabulation Avoidance", "Readability", 
+                         "Educational Value", "Actionability", "Tone/Empathy")
+    ```
+    
+    ```{r load-data}
+    # Load the data
+    df <- read_csv("sample.csv", show_col_types = FALSE)
+    
+    # Create rater type categories
+    df <- df %>%
+      mutate(
+        rater_type_detailed = case_when(
+          rater_name %in% student_raters ~ "Student",
+          rater_name %in% expert_raters ~ "Expert",
+          rater_name %in% auto_raters ~ "Auto-grader",
+          TRUE ~ "Unknown"
+        ),
+        human_vs_auto = ifelse(grader_type == "human", "Human", "Automated")
+      )
+    
+    # Reshape data to long format for easier analysis
+    df_long <- df %>%
+      pivot_longer(
+        cols = all_of(rating_features),
+        names_to = "feature",
+        values_to = "rating"
+      ) %>%
+      mutate(
+        feature = factor(feature, levels = rating_features),
+        model = factor(model),
+        rater_name = factor(rater_name)
+      )
+    ```
+    
+    # Results
+    
+    ## 1. Descriptive Statistics
+    
+    ### 1.1 Response Characteristics
+    
+    ```{r response-readability}
+    # Calculate readability metrics for responses
+    readability_metrics <- df %>%
+      group_by(model) %>%
+      summarise(
+        n_responses = n_distinct(query_id),
+        avg_word_count = mean(str_count(response, "\\S+"), na.rm = TRUE),
+        sd_word_count = sd(str_count(response, "\\S+"), na.rm = TRUE),
+        avg_sentences = mean(str_count(response, "[.!?]+"), na.rm = TRUE),
+        sd_sentences = sd(str_count(response, "[.!?]+"), na.rm = TRUE)
+      )
+    
+    # Create table
+    readability_table <- readability_metrics %>%
+      mutate(
+        Word_Count = sprintf("%.1f ± %.1f", avg_word_count, sd_word_count),
+        Sentences = sprintf("%.1f ± %.1f", avg_sentences, sd_sentences)
+      ) %>%
+      select(Model = model, `Response Count` = n_responses, `Word Count` = Word_Count, Sentences)
+    
+    kable(readability_table, 
+          caption = "Table 1. Response characteristics by model (mean ± SD)",
+          format = "latex", 
+          booktabs = TRUE) %>%
+      kable_styling(latex_options = c("striped", "hold_position"))
+    ```
+    
+    ### 1.2 Overall Performance by Model
+    
+    ```{r overall-model-performance}
+    # Calculate overall performance metrics by model
+    model_performance <- df_long %>%
+      group_by(model) %>%
+      summarise(
+        mean_rating = mean(rating, na.rm = TRUE),
+        sd_rating = sd(rating, na.rm = TRUE),
+        se_rating = sd_rating / sqrt(n()),
+        n_ratings = n()
+      )
+    
+    # Create figure
+    p_model_overall <- ggplot(model_performance, aes(x = reorder(model, mean_rating), y = mean_rating)) +
+      geom_bar(stat = "identity", fill = brand_colors$primary_navy, width = 0.7) +
+      geom_errorbar(aes(ymin = mean_rating - se_rating, ymax = mean_rating + se_rating),
+                    width = 0.3, color = brand_colors$alert_red) +
+      geom_text(aes(label = sprintf("%.2f", mean_rating)), 
+                vjust = -0.5, size = 4, color = brand_colors$primary_navy) +
+      coord_cartesian(ylim = c(0, 5)) +
+      labs(
+        title = "Overall Model Performance Across All Features",
+        subtitle = "Mean rating ± SE across all raters and features",
+        x = "Model",
+        y = "Mean Rating (1-5 scale)"
+      ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    print(p_model_overall)
+    
+    # Save for publication
+    ggsave("figures/figure1_overall_model_performance.pdf", p_model_overall, width = 8, height = 6)
+    ```
+    
+    ### 1.3 Overall Performance by Feature
+    
+    ```{r overall-feature-performance}
+    # Calculate overall performance metrics by feature
+    feature_performance <- df_long %>%
+      group_by(feature) %>%
+      summarise(
+        mean_rating = mean(rating, na.rm = TRUE),
+        sd_rating = sd(rating, na.rm = TRUE),
+        se_rating = sd_rating / sqrt(n()),
+        n_ratings = n()
+      )
+    
+    # Create horizontal bar chart
+    p_feature_overall <- ggplot(feature_performance, 
+                                aes(x = reorder(feature, mean_rating), y = mean_rating)) +
+      geom_bar(stat = "identity", fill = brand_colors$supporting_blue, width = 0.7) +
+      geom_errorbar(aes(ymin = mean_rating - se_rating, ymax = mean_rating + se_rating),
+                    width = 0.3, color = brand_colors$alert_red) +
+      geom_text(aes(label = sprintf("%.2f", mean_rating)), 
+                hjust = -0.2, size = 4, color = brand_colors$primary_navy) +
+      coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5)) +
+      labs(
+        title = "Overall Feature Ratings Across All Models",
+        subtitle = "Mean rating ± SE across all models and raters",
+        x = "Feature",
+        y = "Mean Rating (1-5 scale)"
+      )
+    
+    print(p_feature_overall)
+    
+    # Save for publication
+    ggsave("figures/figure2_overall_feature_performance.pdf", p_feature_overall, width = 8, height = 6)
+    ```
+    
+    ### 1.4 Per-Rater Summary Statistics
+    
+    ```{r rater-summary}
+    # Calculate per-rater statistics
+    rater_summary <- df_long %>%
+      group_by(rater_name, rater_type_detailed) %>%
+      summarise(
+        mean_rating = mean(rating, na.rm = TRUE),
+        sd_rating = sd(rating, na.rm = TRUE),
+        median_rating = median(rating, na.rm = TRUE),
+        n_ratings = n(),
+        .groups = "drop"
+      ) %>%
+      arrange(rater_type_detailed, desc(mean_rating))
+    
+    # Create visualization
+    p_rater_summary <- ggplot(rater_summary, 
+                              aes(x = reorder(rater_name, mean_rating), y = mean_rating, 
+                                  fill = rater_type_detailed)) +
+      geom_bar(stat = "identity", width = 0.7) +
+      geom_errorbar(aes(ymin = mean_rating - sd_rating/sqrt(n_ratings), 
+                        ymax = mean_rating + sd_rating/sqrt(n_ratings)),
+                    width = 0.3) +
+      geom_hline(yintercept = mean(rater_summary$mean_rating), 
+                 linetype = "dashed", color = brand_colors$alert_red) +
+      scale_fill_manual(values = c("Student" = brand_colors$supporting_blue,
+                                   "Expert" = brand_colors$primary_navy,
+                                   "Auto-grader" = brand_colors$accent_yellow)) +
+      coord_flip() +
+      labs(
+        title = "Individual Rater Tendencies",
+        subtitle = "Mean rating ± SE across all features and models",
+        x = "Rater",
+        y = "Mean Rating (1-5 scale)",
+        fill = "Rater Type"
+      )
+    
+    print(p_rater_summary)
+    
+    # Create summary table
+    rater_table <- rater_summary %>%
+      mutate(
+        Rating = sprintf("%.2f ± %.2f", mean_rating, sd_rating)
+      ) %>%
+      select(`Rater` = rater_name, `Type` = rater_type_detailed, 
+             `Mean ± SD` = Rating, `Median` = median_rating, `N` = n_ratings)
+    
+    kable(rater_table, 
+          caption = "Table 2. Individual rater summary statistics",
+          format = "latex", 
+          booktabs = TRUE) %>%
+      kable_styling(latex_options = c("striped", "hold_position"))
+    ```
+    
+    ## 2. Feature-Specific Performance Analysis
+    
+    ### 2.1 Model Performance by Feature
+    
+    ```{r model-feature-heatmap}
+    # Calculate mean ratings for model-feature combinations
+    model_feature_matrix <- df_long %>%
+      group_by(model, feature) %>%
+      summarise(mean_rating = mean(rating, na.rm = TRUE), .groups = "drop") %>%
+      pivot_wider(names_from = feature, values_from = mean_rating) %>%
+      column_to_rownames("model") %>%
+      as.matrix()
+    
+    # Create heatmap
+    p_heatmap <- model_feature_matrix %>%
+      as.data.frame() %>%
+      rownames_to_column("model") %>%
+      pivot_longer(-model, names_to = "feature", values_to = "rating") %>%
+      mutate(
+        model = factor(model, levels = names(ai_colors)),
+        feature = factor(feature, levels = rating_features)
+      ) %>%
+      ggplot(aes(x = feature, y = model, fill = rating)) +
+      geom_tile(color = "white", size = 0.5) +
+      geom_text(aes(label = sprintf("%.2f", rating)), size = 3.5) +
+      scale_fill_gradient2(
+        low = brand_colors$alert_red,
+        mid = brand_colors$accent_yellow,
+        high = brand_colors$success_green,
+        midpoint = 3,
+        limits = c(1, 5),
+        name = "Rating"
+      ) +
+      labs(
+        title = "Model Performance Across Features",
+        subtitle = "Mean ratings averaged across all raters",
+        x = "Feature",
+        y = "Model"
+      ) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        axis.text.y = element_text(size = 10),
+        legend.position = "right"
+      )
+    
+    print(p_heatmap)
+    
+    # Save for publication
+    ggsave("figures/figure3_model_feature_heatmap.pdf", p_heatmap, width = 12, height = 6)
+    ```
+    
+    ### 2.2 Rater Type Comparison by Feature
+    
+    ```{r rater-type-feature}
+    # Calculate mean ratings by rater type and feature
+    rater_type_feature <- df_long %>%
+      group_by(rater_type_detailed, feature) %>%
+      summarise(
+        mean_rating = mean(rating, na.rm = TRUE),
+        se_rating = sd(rating, na.rm = TRUE) / sqrt(n()),
+        .groups = "drop"
+      )
+    
+    # Create grouped bar chart
+    p_rater_type_feature <- ggplot(rater_type_feature, 
+                                   aes(x = feature, y = mean_rating, fill = rater_type_detailed)) +
+      geom_bar(stat = "identity", position = position_dodge(width = 0.8), width = 0.7) +
+      geom_errorbar(aes(ymin = mean_rating - se_rating, ymax = mean_rating + se_rating),
+                    position = position_dodge(width = 0.8), width = 0.3) +
+      scale_fill_manual(values = c("Student" = brand_colors$supporting_blue,
+                                   "Expert" = brand_colors$primary_navy,
+                                   "Auto-grader" = brand_colors$accent_yellow)) +
+      labs(
+        title = "Feature Ratings by Rater Type",
+        subtitle = "Comparison of rating patterns across different evaluator groups",
+        x = "Feature",
+        y = "Mean Rating (1-5 scale)",
+        fill = "Rater Type"
+      ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    print(p_rater_type_feature)
+    ```
+    
+    ## 3. Inter-Rater Reliability Analysis
+    
+    ### 3.1 Within-Group Reliability
+    
+    ```{r within-group-icc}
+    # Function to calculate ICC for a group of raters
+    calculate_icc <- function(data, rater_group, feature_name) {
+      # Filter data for specific raters and feature
+      icc_data <- data %>%
+        filter(rater_name %in% rater_group, feature == feature_name) %>%
+        select(query_id, rater_name, rating) %>%
+        pivot_wider(names_from = rater_name, values_from = rating) %>%
+        select(-query_id) %>%
+        as.matrix()
+      
+      if (ncol(icc_data) > 1 && nrow(icc_data) > 1) {
+        icc_result <- ICC(icc_data)
+        return(data.frame(
+          Feature = feature_name,
+          ICC2k = icc_result$results["ICC2k", "ICC"],
+          ICC2k_lower = icc_result$results["ICC2k", "lower bound"],
+          ICC2k_upper = icc_result$results["ICC2k", "upper bound"],
+          p_value = icc_result$results["ICC2k", "p"]
+        ))
+      } else {
+        return(data.frame(
+          Feature = feature_name,
+          ICC2k = NA,
+          ICC2k_lower = NA,
+          ICC2k_upper = NA,
+          p_value = NA
+        ))
+      }
+    }
+    
+    # Calculate ICC for each group and feature
+    icc_results <- list()
+    
+    # Students
+    icc_results$students <- map_df(rating_features, 
+                                   ~calculate_icc(df_long, student_raters, .x)) %>%
+      mutate(Group = "Students")
+    
+    # Experts
+    icc_results$experts <- map_df(rating_features, 
+                                  ~calculate_icc(df_long, expert_raters, .x)) %>%
+      mutate(Group = "Experts")
+    
+    # Auto-graders
+    icc_results$auto <- map_df(rating_features, 
+                               ~calculate_icc(df_long, auto_raters, .x)) %>%
+      mutate(Group = "Auto-graders")
+    
+    # Combine results
+    icc_combined <- bind_rows(icc_results)
+    
+    # Create visualization
+    p_icc_within <- ggplot(icc_combined, 
+                           aes(x = Feature, y = ICC2k, color = Group, group = Group)) +
+      geom_point(size = 3, position = position_dodge(width = 0.3)) +
+      geom_errorbar(aes(ymin = ICC2k_lower, ymax = ICC2k_upper),
+                    width = 0.2, position = position_dodge(width = 0.3)) +
+      geom_hline(yintercept = 0.6, linetype = "dashed", color = brand_colors$alert_red,
+                 size = 1, alpha = 0.7) +
+      scale_color_manual(values = c("Students" = brand_colors$supporting_blue,
+                                    "Experts" = brand_colors$primary_navy,
+                                    "Auto-graders" = brand_colors$accent_yellow)) +
+      labs(
+        title = "Within-Group Inter-Rater Reliability",
+        subtitle = "ICC(2,k) with 95% confidence intervals; dashed line indicates ICC = 0.60 threshold",
+        x = "Feature",
+        y = "ICC(2,k)",
+        color = "Rater Group"
+      ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      coord_cartesian(ylim = c(0, 1))
+    
+    print(p_icc_within)
+    
+    # Create summary table
+    icc_table <- icc_combined %>%
+      mutate(
+        ICC_CI = sprintf("%.3f [%.3f, %.3f]", ICC2k, ICC2k_lower, ICC2k_upper),
+        Significance = ifelse(p_value < 0.001, "***", 
+                              ifelse(p_value < 0.01, "**",
+                                     ifelse(p_value < 0.05, "*", "ns")))
+      ) %>%
+      select(Feature, Group, `ICC(2,k) [95% CI]` = ICC_CI, Sig = Significance) %>%
+      pivot_wider(names_from = Group, values_from = c(`ICC(2,k) [95% CI]`, Sig)) %>%
+      select(Feature, contains("Students"), contains("Experts"), contains("Auto"))
+    
+    kable(icc_table, 
+          caption = "Table 3. Within-group inter-rater reliability (ICC(2,k)) by feature",
+          format = "latex", 
+          booktabs = TRUE) %>%
+      kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
+    ```
+    
+    ### 3.2 Between-Group Reliability
+    
+    ```{r between-group-icc}
+    # Calculate ICC for different group combinations
+    calculate_between_group_icc <- function(data, group1_raters, group2_raters, feature_name, group_label) {
+      all_raters <- c(group1_raters, group2_raters)
+      
+      icc_data <- data %>%
+        filter(rater_name %in% all_raters, feature == feature_name) %>%
+        select(query_id, rater_name, rating) %>%
+        pivot_wider(names_from = rater_name, values_from = rating) %>%
+        select(-query_id) %>%
+        as.matrix()
+      
+      if (ncol(icc_data) > 1 && nrow(icc_data) > 1) {
+        icc_result <- ICC(icc_data)
+        return(data.frame(
+          Feature = feature_name,
+          Comparison = group_label,
+          ICC2k = icc_result$results["ICC2k", "ICC"],
+          ICC2k_lower = icc_result$results["ICC2k", "lower bound"],
+          ICC2k_upper = icc_result$results["ICC2k", "upper bound"],
+          p_value = icc_result$results["ICC2k", "p"]
+        ))
+      } else {
+        return(data.frame(
+          Feature = feature_name,
+          Comparison = group_label,
+          ICC2k = NA,
+          ICC2k_lower = NA,
+          ICC2k_upper = NA,
+          p_value = NA
+        ))
+      }
+    }
+    
+    # Calculate between-group ICCs
+    between_group_results <- list()
+    
+    # Students vs Experts
+    between_group_results$stud_exp <- map_df(rating_features,
+                                             ~calculate_between_group_icc(df_long, student_raters, expert_raters, .x, "Students vs Experts"))
+    
+    # Human (all) vs Auto
+    human_raters <- c(student_raters, expert_raters)
+    between_group_results$human_auto <- map_df(rating_features,
+                                               ~calculate_between_group_icc(df_long, human_raters, auto_raters, .x, "Human vs Auto"))
+    
+    # Experts vs Auto
+    between_group_results$exp_auto <- map_df(rating_features,
+                                             ~calculate_between_group_icc(df_long, expert_raters, auto_raters, .x, "Experts vs Auto"))
+    
+    # All raters combined
+    all_raters <- c(student_raters, expert_raters, auto_raters)
+    between_group_results$all <- map_df(rating_features,
+                                        ~calculate_between_group_icc(df_long, all_raters, character(0), .x, "All Raters"))
+    
+    # Combine results
+    between_icc_combined <- bind_rows(between_group_results)
+    
+    # Create visualization
+    p_icc_between <- ggplot(between_icc_combined %>% 
+                              filter(Comparison != "All Raters"), 
+                            aes(x = Feature, y = ICC2k, color = Comparison, group = Comparison)) +
+      geom_point(size = 3, position = position_dodge(width = 0.3)) +
+      geom_errorbar(aes(ymin = ICC2k_lower, ymax = ICC2k_upper),
+                    width = 0.2, position = position_dodge(width = 0.3)) +
+      geom_hline(yintercept = 0.6, linetype = "dashed", color = brand_colors$alert_red,
+                 size = 1, alpha = 0.7) +
+      scale_color_manual(values = c("Students vs Experts" = brand_colors$primary_navy,
+                                    "Human vs Auto" = brand_colors$supporting_blue,
+                                    "Experts vs Auto" = brand_colors$accent_yellow)) +
+      labs(
+        title = "Between-Group Inter-Rater Reliability",
+        subtitle = "ICC(2,k) for different rater group combinations",
+        x = "Feature",
+        y = "ICC(2,k)",
+        color = "Group Comparison"
+      ) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      coord_cartesian(ylim = c(0, 1))
+    
+    print(p_icc_between)
+    ```
+    
+    ## 4. Model Performance Comparison
+    
+    ### 4.1 Linear Mixed-Effects Models
+    
+    ```{r lmm-analysis}
+    # Function to fit LMM for each feature
+    fit_feature_lmm <- function(data, feature_name) {
+      feature_data <- data %>%
+        filter(feature == feature_name)
+      
+      # Fit the model with random intercepts for question and rater
+      model <- lmer(rating ~ model + (1|query_id) + (1|rater_name), 
+                    data = feature_data, REML = FALSE)
+      
+      # Get model summary
+      model_summary <- summary(model)
+      
+      # Perform likelihood ratio test
+      null_model <- lmer(rating ~ 1 + (1|query_id) + (1|rater_name), 
+                         data = feature_data, REML = FALSE)
+      lr_test <- anova(null_model, model)
+      
+      # Get estimated marginal means
+      emm <- emmeans(model, ~ model)
+      emm_df <- as.data.frame(emm)
+      
+      # Perform pairwise comparisons
+      pairs <- pairs(emm, adjust = "tukey")
+      
+      return(list(
+        feature = feature_name,
+        model = model,
+        summary = model_summary,
+        lr_test = lr_test,
+        emmeans = emm_df,
+        pairwise = pairs
+      ))
+    }
+    
+    # Fit models for all features
+    lmm_results <- map(rating_features, ~fit_feature_lmm(df_long, .x))
+    names(lmm_results) <- rating_features
+    
+    # Extract key statistics for each feature
+    feature_model_stats <- map_df(lmm_results, function(res) {
+      lr_p <- res$lr_test$`Pr(>Chisq)`[2]
+      data.frame(
+        Feature = res$feature,
+        LR_Chisq = res$lr_test$Chisq[2],
+        df = res$lr_test$Df[2],
+        p_value = lr_p,
+        Significant = ifelse(lr_p < 0.001, "***",
+                             ifelse(lr_p < 0.01, "**",
+                                    ifelse(lr_p < 0.05, "*", "ns")))
+      )
+    })
+    
+    # Create estimated marginal means plot for significant features
+    significant_features <- feature_model_stats %>%
+      filter(p_value < 0.05) %>%
+      pull(Feature)
+    
+    if (length(significant_features) > 0) {
+      emm_data <- map_df(significant_features, function(feat) {
+        lmm_results[[feat]]$emmeans %>%
+          mutate(Feature = feat)
+      })
+      
+      p_emm <- ggplot(emm_data, aes(x = model, y = emmean, color = Feature)) +
+        geom_point(position = position_dodge(width = 0.5), size = 3) +
+        geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL),
+                      position = position_dodge(width = 0.5), width = 0.3) +
+        facet_wrap(~ Feature, scales = "free_x", ncol = 3) +
+        labs(
+          title = "Estimated Marginal Means by Model",
+          subtitle = "Features with significant model differences (p < 0.05)",
+          x = "Model",
+          y = "Estimated Mean Rating",
+          color = "Feature"
+        ) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1),
+              legend.position = "none")
+      
+      print(p_emm)
+    }
+    
+    # Create summary table
+    kable(feature_model_stats, 
+          caption = "Table 4. Likelihood ratio tests for model effects by feature",
+          format = "latex", 
+          booktabs = TRUE,
+          digits = c(0, 2, 0, 4, 0)) %>%
+      kable_styling(latex_options = c("striped", "hold_position"))
+    ```
+    
+    Pr(>Chisq)`[2]
   ))
 }
 
@@ -1311,8 +2073,8 @@ p_rater_differences <- rater_type_stats %>%
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   geom_line(position = position_dodge(width = 0.3), alpha = 0.5) +
   scale_color_manual(values = c("Student" = brand_colors$supporting_blue,
-                               "Expert" = brand_colors$primary_navy,
-                               "Auto" = brand_colors$accent_yellow)) +
+                                "Expert" = brand_colors$primary_navy,
+                                "Auto" = brand_colors$accent_yellow)) +
   labs(
     title = "Rater Type Effects Across Features",
     subtitle = "Estimated marginal means from mixed-effects models",
@@ -1332,13 +2094,13 @@ rater_type_table <- rater_type_stats %>%
     `Auto-grader` = sprintf("%.2f", Auto_Mean),
     `S-E` = ifelse(Student_Expert_p < 0.001, "***",
                    ifelse(Student_Expert_p < 0.01, "**",
-                         ifelse(Student_Expert_p < 0.05, "*", "ns"))),
+                          ifelse(Student_Expert_p < 0.05, "*", "ns"))),
     `S-A` = ifelse(Student_Auto_p < 0.001, "***",
                    ifelse(Student_Auto_p < 0.01, "**",
-                         ifelse(Student_Auto_p < 0.05, "*", "ns"))),
+                          ifelse(Student_Auto_p < 0.05, "*", "ns"))),
     `E-A` = ifelse(Expert_Auto_p < 0.001, "***",
                    ifelse(Expert_Auto_p < 0.01, "**",
-                         ifelse(Expert_Auto_p < 0.05, "*", "ns")))
+                          ifelse(Expert_Auto_p < 0.05, "*", "ns")))
   ) %>%
   select(Feature, Student, Expert, `Auto-grader`, `S-E`, `S-A`, `E-A`)
 
@@ -1448,11 +2210,9 @@ hclust_result <- hclust(dist_matrix, method = "ward.D2")
 
 # Convert to dendrogram
 dend <- as.dendrogram(hclust_result)
-dend <- color_branches(dend, k = 3, col = c(
-  brand_colors$primary_navy,
-  brand_colors$accent_yellow,
-  brand_colors$supporting_blue
-))
+dend <- color_branches(dend, k = 3, col = c(brand_colors$primary_navy, 
+                                            brand_colors$accent_yellow, 
+                                            brand_colors$supporting_blue))
 
 # Create dendrogram plot
 p_dendrogram <- ggplot(as.ggdend(dend)) +
@@ -1478,11 +2238,9 @@ pca_scores$cluster <- factor(kmeans_result$cluster)
 p_clusters <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = cluster, label = model)) +
   geom_point(size = 4) +
   geom_text_repel(size = 4) +
-  scale_color_manual(values = c(
-    brand_colors$primary_navy,
-    brand_colors$accent_yellow,
-    brand_colors$supporting_blue
-  )) +
+  scale_color_manual(values = c(brand_colors$primary_navy, 
+                                brand_colors$accent_yellow, 
+                                brand_colors$supporting_blue)) +
   labs(
     title = "Model Clusters in PCA Space",
     subtitle = "K-means clustering (k=3)",
@@ -1566,14 +2324,12 @@ auto_performance <- df_long %>%
 
 # Create performance comparison plot
 p_auto_performance <- auto_performance %>%
-  pivot_longer(
-    cols = c(RMSE, MAE, Bias, Correlation),
-    names_to = "Metric",
-    values_to = "Value"
-  ) %>%
+  pivot_longer(cols = c(RMSE, MAE, Bias, Correlation),
+               names_to = "Metric",
+               values_to = "Value") %>%
   ggplot(aes(x = rater_name, y = Value, fill = Metric)) +
   geom_bar(stat = "identity", position = "dodge") +
-  facet_wrap(~Metric, scales = "free_y", ncol = 2) +
+  facet_wrap(~ Metric, scales = "free_y", ncol = 2) +
   scale_fill_manual(values = c(
     "RMSE" = brand_colors$alert_red,
     "MAE" = brand_colors$accent_yellow,
@@ -1586,10 +2342,8 @@ p_auto_performance <- auto_performance %>%
     x = "Auto-grader",
     y = "Value"
   ) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  )
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
 
 print(p_auto_performance)
 
@@ -1603,11 +2357,10 @@ auto_performance_table <- auto_performance %>%
   ) %>%
   rename(`Auto-grader` = rater_name)
 
-kable(auto_performance_table,
-  caption = "Table 7. Auto-grader performance metrics compared to human consensus",
-  format = "latex",
-  booktabs = TRUE
-) %>%
+kable(auto_performance_table, 
+      caption = "Table 7. Auto-grader performance metrics compared to human consensus",
+      format = "latex", 
+      booktabs = TRUE) %>%
   kable_styling(latex_options = c("striped", "hold_position"))
 ```
 
@@ -1630,13 +2383,10 @@ panel_a <- df_long %>%
   ggplot(aes(x = reorder(model, mean_rating), y = mean_rating)) +
   geom_bar(stat = "identity", fill = brand_colors$primary_navy) +
   geom_errorbar(aes(ymin = mean_rating - se, ymax = mean_rating + se),
-    width = 0.3
-  ) +
+                width = 0.3) +
   coord_flip() +
-  labs(
-    title = "A. Overall Model Performance",
-    x = "Model", y = "Mean Rating"
-  ) +
+  labs(title = "A. Overall Model Performance",
+       x = "Model", y = "Mean Rating") +
   theme_minimal(base_size = 10)
 
 # Panel B: Feature reliability
@@ -1646,10 +2396,8 @@ panel_b <- icc_combined %>%
   geom_bar(stat = "identity", fill = brand_colors$supporting_blue) +
   geom_hline(yintercept = 0.6, linetype = "dashed", color = brand_colors$alert_red) +
   coord_flip() +
-  labs(
-    title = "B. Feature Reliability (All Raters)",
-    x = "Feature", y = "ICC(2,k)"
-  ) +
+  labs(title = "B. Feature Reliability (All Raters)",
+       x = "Feature", y = "ICC(2,k)") +
   theme_minimal(base_size = 10)
 
 # Panel C: Rater type agreement
@@ -1663,17 +2411,12 @@ panel_c <- df_long %>%
   ggplot(aes(x = rater_type_detailed, y = mean_rating, fill = rater_type_detailed)) +
   geom_bar(stat = "identity") +
   geom_errorbar(aes(ymin = mean_rating - sd, ymax = mean_rating + sd),
-    width = 0.3
-  ) +
-  scale_fill_manual(values = c(
-    "Student" = brand_colors$supporting_blue,
-    "Expert" = brand_colors$primary_navy,
-    "Auto-grader" = brand_colors$accent_yellow
-  )) +
-  labs(
-    title = "C. Rater Type Comparison",
-    x = "Rater Type", y = "Mean Rating"
-  ) +
+                width = 0.3) +
+  scale_fill_manual(values = c("Student" = brand_colors$supporting_blue,
+                               "Expert" = brand_colors$primary_navy,
+                               "Auto-grader" = brand_colors$accent_yellow)) +
+  labs(title = "C. Rater Type Comparison",
+       x = "Rater Type", y = "Mean Rating") +
   theme_minimal(base_size = 10) +
   theme(legend.position = "none")
 
@@ -1682,10 +2425,8 @@ panel_d <- auto_performance %>%
   ggplot(aes(x = reorder(rater_name, -Correlation), y = Correlation)) +
   geom_bar(stat = "identity", fill = brand_colors$success_green) +
   geom_hline(yintercept = 0.8, linetype = "dashed", color = brand_colors$alert_red) +
-  labs(
-    title = "D. Auto-grader Correlation with Humans",
-    x = "Auto-grader", y = "Correlation"
-  ) +
+  labs(title = "D. Auto-grader Correlation with Humans",
+       x = "Auto-grader", y = "Correlation") +
   theme_minimal(base_size = 10) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -1720,35 +2461,28 @@ key_findings <- data.frame(
     feature_performance %>% arrange(desc(mean_rating)) %>% slice(1) %>% pull(feature),
     feature_performance %>% arrange(mean_rating) %>% slice(1) %>% pull(feature),
     sprintf("r = %.3f", mean(auto_performance$Correlation)),
-    sprintf("ICC = %.3f", mean(between_icc_combined %>%
-      filter(Comparison == "Students vs Experts") %>%
-      pull(ICC2k), na.rm = TRUE)),
+    sprintf("ICC = %.3f", mean(between_icc_combined %>% 
+                                 filter(Comparison == "Students vs Experts") %>% 
+                                 pull(ICC2k), na.rm = TRUE)),
     sum(feature_model_stats$p_value < 0.05)
   ),
   Details = c(
-    sprintf(
-      "Mean rating = %.2f",
-      model_performance %>% arrange(desc(mean_rating)) %>% slice(1) %>% pull(mean_rating)
-    ),
-    sprintf(
-      "Mean rating = %.2f",
-      feature_performance %>% arrange(desc(mean_rating)) %>% slice(1) %>% pull(mean_rating)
-    ),
-    sprintf(
-      "Mean rating = %.2f",
-      feature_performance %>% arrange(mean_rating) %>% slice(1) %>% pull(mean_rating)
-    ),
+    sprintf("Mean rating = %.2f", 
+            model_performance %>% arrange(desc(mean_rating)) %>% slice(1) %>% pull(mean_rating)),
+    sprintf("Mean rating = %.2f", 
+            feature_performance %>% arrange(desc(mean_rating)) %>% slice(1) %>% pull(mean_rating)),
+    sprintf("Mean rating = %.2f", 
+            feature_performance %>% arrange(mean_rating) %>% slice(1) %>% pull(mean_rating)),
     "Average across all auto-graders",
     "Average across all features",
     paste(significant_features, collapse = ", ")
   )
 )
 
-kable(key_findings,
-  caption = "Table 8. Summary of key statistical findings",
-  format = "latex",
-  booktabs = TRUE
-) %>%
+kable(key_findings, 
+      caption = "Table 8. Summary of key statistical findings",
+      format = "latex", 
+      booktabs = TRUE) %>%
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   column_spec(1, width = "5cm") %>%
   column_spec(3, width = "6cm")
@@ -1763,9 +2497,8 @@ kable(key_findings,
 representative_model <- lmm_results[["Appropriateness"]]$model
 
 # Create diagnostic plots
-p_diagnostics <- plot(check_model(representative_model),
-  colors = c(brand_colors$primary_navy, brand_colors$alert_red)
-)
+p_diagnostics <- plot(check_model(representative_model), 
+                      colors = c(brand_colors$primary_navy, brand_colors$alert_red))
 
 # QQ plot of random effects
 ranef_df <- as.data.frame(ranef(representative_model))
@@ -1773,11 +2506,9 @@ ranef_df <- as.data.frame(ranef(representative_model))
 p_qq_random <- ggplot(ranef_df$query_id, aes(sample = `(Intercept)`)) +
   stat_qq() +
   stat_qq_line(color = brand_colors$alert_red) +
-  labs(
-    title = "QQ Plot of Random Effects (Query ID)",
-    x = "Theoretical Quantiles",
-    y = "Sample Quantiles"
-  ) +
+  labs(title = "QQ Plot of Random Effects (Query ID)",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
   theme_minimal()
 
 print(p_qq_random)
@@ -1798,23 +2529,20 @@ if (length(significant_features) > 0) {
         `95% CI` = sprintf("[%.3f, %.3f]", lower.CL, upper.CL),
         p_adj = sprintf("%.4f", p.value),
         Sig = ifelse(p.value < 0.001, "***",
-          ifelse(p.value < 0.01, "**",
-            ifelse(p.value < 0.05, "*", "")
-          )
-        )
+                     ifelse(p.value < 0.01, "**",
+                            ifelse(p.value < 0.05, "*", "")))
       ) %>%
       select(Feature, Contrast = contrast, Estimate, SE, `95% CI`, `p-value` = p_adj, Sig)
   })
-
+  
   # Combine all pairwise comparisons
   all_pairwise <- bind_rows(pairwise_tables)
-
+  
   # Create supplementary table
-  kable(all_pairwise %>% filter(Feature == significant_features[1]),
-    caption = sprintf("Table S1. Pairwise model comparisons for %s", significant_features[1]),
-    format = "latex",
-    booktabs = TRUE
-  ) %>%
+  kable(all_pairwise %>% filter(Feature == significant_features[1]), 
+        caption = sprintf("Table S1. Pairwise model comparisons for %s", significant_features[1]),
+        format = "latex", 
+        booktabs = TRUE) %>%
     kable_styling(latex_options = c("striped", "hold_position", "scale_down"))
 }
 ```
