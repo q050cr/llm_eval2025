@@ -27,6 +27,7 @@ data/
 figures/
 notebooks/stats_analysis_files/
 outputs/
+quarto_output/
 logs/
 
 # additional dirs
