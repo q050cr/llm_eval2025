@@ -7,15 +7,29 @@ format:
     toc: true
     toc-depth: 3
     number-sections: false
-    code-fold: true
-    code-tools: true
-    code-summary: "Show the code"
+    echo: false
+    #code-fold: true
+    #code-tools: true
+    #code-summary: "Show the code"
     theme: cosmo
+    fig-width: 10
+    fig-height: 8
   pdf:
     toc: true
     number-sections: false
     colorlinks: true
     echo: false
+    fig-width: 7
+    fig-height: 5
+    geometry:  # Set margins for PDF output default geometry: margin=1in (25.4mm all sides)
+      - top=20mm
+      - left=15mm
+      - right=15mm
+      - bottom=20mm
+    mainfont: Times New Roman
+    documentclass: report 
+    classoption: [11pt] # Font size
+    keep-tex: true # Keep the intermediate .tex file for debugging
 ---
 
 ```{r setup, include=FALSE}
@@ -113,6 +127,27 @@ rating_features <- c(
 )
 ```
 
+```{r}
+#| label: pdf-table-helper-function
+
+# Helper function to format gt tables for PDF output
+format_gt_for_pdf <- function(gt_table, font_size = 8, width_pct = 95) {
+  if (knitr::is_latex_output()) {
+    gt_table %>%
+      tab_options(
+        table.font.size = font_size,
+        table.width = pct(width_pct),
+        column_labels.font.size = font_size + 1,
+        row_group.font.size = font_size + 1,
+        footnotes.font.size = font_size - 1,
+        source_notes.font.size = font_size - 1
+      ) %>%
+      cols_width(everything() ~ px(80)) # Adjust column widths
+  } else {
+    gt_table
+  }
+}
+```
 
 ```{r load-data}
 #| label: Load-data
@@ -218,9 +253,9 @@ We calculate and present readability metrics for medical text responses using th
 
 ---
 
-In medical and health-related fields, ensuring that patient education materials are accessible is crucial. Both FRE and FKGL are commonly used to assess the readability of such materials. However, FKGL is often preferred because it provides a direct correlation to U.S. grade levels, simplifying the assessment of whether materials are appropriate for the target audience. ([journals.lww.com][https://journals.lww.com/edhe/fulltext/2017/30010/assessing_reading_levels_of_health_information_.15.aspx])
+In medical and health-related fields, ensuring that patient education materials are accessible is crucial. Both FRE and FKGL are commonly used to assess the readability of such materials. However, FKGL is often preferred because it provides a direct correlation to U.S. grade levels, simplifying the assessment of whether materials are appropriate for the target audience. ([journals.lww.com](https://journals.lww.com/edhe/fulltext/2017/30010/assessing_reading_levels_of_health_information_.15.aspx))
 
-For instance, a study analyzing patient information sheets found that the mean FKGL was 11.4, indicating that the materials were written at a level suitable for individuals with at least an 11th-grade education. ([pubmed.ncbi.nlm.nih.gov][https://pubmed.ncbi.nlm.nih.gov/36131293/])
+For instance, a study analyzing patient information sheets found that the mean FKGL was 11.4, indicating that the materials were written at a level suitable for individuals with at least an 11th-grade education. ([pubmed.ncbi.nlm.nih.gov](https://pubmed.ncbi.nlm.nih.gov/36131293/))
 
 
 * **Use Flesch-Kincaid Grade Level (FKGL)** when you need a straightforward indication of the education level required to understand the text. This is particularly useful in medical contexts, where materials should be tailored to the patient's reading ability.([en.wikipedia.org][7])
@@ -362,13 +397,15 @@ read_by_model <- readability_scores %>%
     ARI = sprintf("%.1f ± %.1f", mean(ARI, na.rm = TRUE), sd(ARI, na.rm = TRUE))
   )
 
-read_by_model %>%
+readability_per_model_gt <- read_by_model %>%
   mutate(
     model = tools::toTitleCase(model)
   ) %>%
   gt() %>%
   tab_header(title = "Table 1: Readability Metrics by Model") %>%
   fmt_missing(missing_text = "-")
+
+readability_per_model_gt
 ```
 
 ```{r}
@@ -389,10 +426,10 @@ ggplot(readability_scores, aes(x = Flesch.Kincaid, fill = model)) +
 #| message: false
 #| warning: false
 
-p <- ggplot(
-  readability_scores,
-  aes(x = model, y = Flesch.Kincaid, fill = model)
-) +
+p <- readability_scores %>%
+  ggplot(
+    aes(x = model, y = Flesch.Kincaid, fill = model)
+  ) +
   geom_violin(trim = FALSE, alpha = 0.6) +
   geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
   stat_summary(
@@ -402,6 +439,24 @@ p <- ggplot(
     size = 3,
     fill = "white"
   ) +
+  geom_hline(
+    yintercept = mean(readability_scores$Flesch.Kincaid, na.rm = TRUE),
+    linetype = "dashed",
+    color = "red",
+    size = 0.8
+  ) +
+  annotate(
+    "text",
+    x = 5.5,
+    y = mean(readability_scores$Flesch.Kincaid, na.rm = TRUE) + 10,
+    label = sprintf(
+      "Mean: %.2f",
+      mean(readability_scores$Flesch.Kincaid, na.rm = TRUE)
+    ),
+    color = "red",
+    size = 4,
+    hjust = 0
+  ) +
   labs(
     title = "Flesch Reading Ease by Model",
     subtitle = "Violin + individual scores + mean",
@@ -409,7 +464,8 @@ p <- ggplot(
     y = "Flesch Reading Ease"
   ) +
   scale_fill_manual(values = ai_colors) +
-  theme_minimal(base_size = 14) +
+  coord_flip() +
+  theme_minimal(base_size = 16) +
   theme(
     # axis.text.x      = element_text(angle = 45, hjust = 1),
     # panel.grid.minor = element_blank(),
@@ -417,6 +473,78 @@ p <- ggplot(
   )
 
 p
+
+ggsave(
+  "figures/flesch_model_violin_plot.svg",
+  p,
+  width = 7,
+  height = 5
+)
+
+ggsave(
+  "figures/flesch_model_violin_plot.pdf",
+  p,
+  width = 7,
+  height = 5
+)
+```
+
+```{r}
+#| label: barplot-flesch-model
+
+# Create the data frame
+readability_data <- data.frame(
+  model = c("Anthropic", "Deepseek", "Google", "Openai", "Perplexity", "Xai"),
+  flesch_kg_mean = c(35.2, 14.6, 11.9, 15.0, 21.1, 14.4),
+  flesch_kg_sd = c(20.5, 3.0, 1.8, 3.1, 9.9, 2.6)
+)
+
+# Define color mapping with correct capitalization
+ai_colors_capital <- c(
+  "Openai" = "#17A683",
+  "Google" = "#528DD5",
+  "Deepseek" = "#5370FE",
+  "Perplexity" = "#278491",
+  "Anthropic" = "#D5A583",
+  "Xai" = "#000000"
+)
+
+# Make model a factor to preserve order
+readability_data$model <- factor(
+  readability_data$model,
+  levels = names(ai_colors_capital)
+)
+
+# Create the plot
+p <- ggplot(
+  readability_data,
+  aes(x = reorder(model, -flesch_kg_mean), y = flesch_kg_mean, fill = model)
+) +
+  geom_bar(stat = "identity", color = NA) +
+  geom_errorbar(
+    aes(
+      ymin = flesch_kg_mean - flesch_kg_sd,
+      ymax = flesch_kg_mean + flesch_kg_sd
+    ),
+    width = 0.2
+  ) +
+  scale_fill_manual(values = ai_colors_capital) +
+  labs(
+    title = "Flesch Kincaid Grade by Model",
+    y = "Flesch Kincaid Grade (mean ± SD)",
+    x = "Model"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  )
+
+ggsave(
+  "figures/flesch_model_bar_plot.pdf",
+  p,
+  width = 7,
+  height = 5
+)
 ```
 
 
@@ -596,7 +724,7 @@ model_performance <- df_long %>%
 # Create figure
 p_model_overall <- ggplot(
   model_performance,
-  aes(x = reorder(model, mean_rating), y = mean_rating)
+  aes(x = reorder(model, -mean_rating), y = mean_rating)
 ) +
   geom_bar(stat = "identity", aes(fill = model), width = 0.7) +
   scale_fill_manual(values = ai_colors) +
@@ -613,12 +741,16 @@ p_model_overall <- ggplot(
   ) +
   coord_cartesian(ylim = c(0, 5)) +
   labs(
-    title = "Overall Model Performance Across All Features",
-    subtitle = "Mean rating ± SE across all raters and features",
-    x = "Model",
+    title = "Mean rating ± SE across all raters and features",
+    subtitle = element_blank(),
+    x = NULL,
     y = "Mean Rating (1-5 scale)"
   ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
 
 print(p_model_overall)
 
@@ -667,11 +799,11 @@ p_feature_overall <- ggplot(
   ) +
   coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5)) +
   labs(
-    title = "Overall Feature Ratings Across All Models",
-    subtitle = "Mean rating ± SE across all models and raters",
+    title = "Mean rating ± SE across all models and raters",
     x = "Feature",
     y = "Mean Rating (1-5 scale)"
-  )
+  ) +
+  theme(axis.title.y = element_blank())
 
 print(p_feature_overall)
 
@@ -810,7 +942,7 @@ p_heatmap <- model_feature_matrix %>%
   ) %>%
   ggplot(aes(x = feature, y = model, fill = rating)) +
   geom_tile(color = "white", linewidth = 0.5) +
-  geom_text(aes(label = sprintf("%.2f", rating)), size = 3.5) +
+  geom_text(aes(label = sprintf("%.2f", rating)), size = 6) +
   scale_fill_gradient2(
     low = brand_colors$alert_red,
     mid = brand_colors$accent_yellow,
@@ -820,14 +952,15 @@ p_heatmap <- model_feature_matrix %>%
     name = "Rating"
   ) +
   labs(
-    title = "Model Performance Across Features",
-    subtitle = "Mean ratings averaged across all raters",
+    title = "Mean ratings averaged across all raters",
     x = "Feature",
     y = "Model"
   ) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-    axis.text.y = element_text(size = 10),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
     legend.position = "right"
   )
 
@@ -883,6 +1016,13 @@ best_worst <- feature_stats %>%
 
 ```{r}
 #| label: feature-table-wide
+#| ft.keepnext: false
+
+# Create a landscape table for wide content
+if (knitr::is_latex_output()) {
+  # Use LaTeX environment instead of direct commands
+  cat("\\begin{landscape}\n")
+}
 
 feature_wide %>%
   gt(rowname_col = "feature") %>%
@@ -897,7 +1037,15 @@ feature_wide %>%
   ) %>%
   tab_header(
     title = "Mean Feature Ratings (95% CI) by Model"
+  ) %>%
+  tab_options(
+    table.width = pct(100),
+    table.font.size = px(9) # Reduce font size for PDF
   )
+
+if (knitr::is_latex_output()) {
+  cat("\\end{landscape}\n")
+}
 ```
 
 ```{r}
@@ -961,7 +1109,7 @@ best_worst_ci %>%
     `Bottom Feature (Mean [95% CI])` = "Lowest"
   ) %>%
   tab_header(
-    title = "Best‐ and Worst‐Rated Features by Model"
+    title = "Best- and Worst-Rated Features by Model"
   )
 
 ```
@@ -973,42 +1121,42 @@ best_worst_ci %>%
   
   * Highest: **`r best_worst$Highest[best_worst$model=="anthropic"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="anthropic"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="anthropic"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="anthropic"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="anthropic"])`).
 
 * **DeepSeek**
   
   * Highest: **`r best_worst$Highest[best_worst$model=="deepseek"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="deepseek"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="deepseek"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="deepseek"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="deepseek"])`).
 
 * **Google**
   
   * Highest: **`r best_worst$Highest[best_worst$model=="google"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="google"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="google"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="google"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="google"])`).
 
 * **OpenAI**
   
   * Highest: **`r best_worst$Highest[best_worst$model=="openai"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="openai"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="openai"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="openai"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="openai"])`).
 
 * **Perplexity**
   
   * Highest: **`r best_worst$Highest[best_worst$model=="perplexity"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="perplexity"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="perplexity"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="perplexity"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="perplexity"])`).
 
 * **XAI**
   
   * Highest: **`r best_worst$Highest[best_worst$model=="xai"]`**
   (mean = `r sprintf("%.2f", best_worst$Highest_val[best_worst$model=="xai"])`).
-* Lowest: **`r best_worst$Lowest[best_worst$model=="xai"]`**
+  * Lowest: **`r best_worst$Lowest[best_worst$model=="xai"]`**
   (mean = `r sprintf("%.2f", best_worst$Lowest_val[best_worst$model=="xai"])`).
 
 > Clinicians can use these highlights—each model’s strongest and weakest feature—to decide which system best fits their specific priorities.
@@ -1222,7 +1370,7 @@ icc_feature_all %>%
     `95% CI` = "(95% CI)"
   ) %>%
   tab_header(
-    title = "Feature‐Wise ICC(A,1) by Rater Group"
+    title = "Feature-Wise ICC(A,1) by Rater Group"
   )
 
 ```
@@ -1236,9 +1384,9 @@ icc_feature_all %>%
 
 We’ll use **ICC(2,k)** (two‐way random, absolute‐agreement, *average*‐measure) to ask how reliable the *mean* rating is when we pool different sets of raters:
 
-1. **All 12 raters** (3 Students + 3 Experts + 6 Auto‐graders)  
+1. **All 12 raters** (3 Students + 3 Experts + 6 Auto-graders)  
 2. **Students + Experts** (6 human raters)  
-3. **Experts + Auto‐graders** (9 raters)
+3. **Experts + Auto-graders** (9 raters)
 
 ```{r}
 #| label: between-setup
@@ -1392,12 +1540,12 @@ ggplot(
 
 #### Comments on Usefulness
 
-* **Average‐measure ICC(2,k)** tells you how reliable the *mean* of *k* raters is, which naturally increases as you add more raters (since random error averages out).
+* **Average-measure ICC(2,k)** tells you how reliable the *mean* of *k* raters is, which naturally increases as you add more raters (since random error averages out).
 * As expected, pooling **all 12** yields the highest reliability for every feature.
 * The **Students + Experts** panel (6 human raters) shows noticeably lower ICCs than the full panel, highlighting the value of adding automated scores.
-* Combining **Experts + Auto‐graders** (9 raters) recovers much of the full‐panel reliability, suggesting auto‐graders complement expert raters well.
+* Combining **Experts + Auto-graders** (9 raters) recovers much of the full-panel reliability, suggesting auto-graders complement expert raters well.
 
-> **Caveat:**  Because our *single‐measure* (ICC(2,1)) within‐group reliabilities were often only *fair* (≤0.5), these average‐measure ICCs should be interpreted with caution.  You're essentially demonstrating that *more* raters produce more reliable *means*—a well‐known statistical effect—rather than uncovering a deep alignment between groups.  If you wanted to know *how* well human consensus matches auto‐grader consensus *per se*, you'd instead compute ICC(2,1) on the two **group means** (one “human” mean vs. one “auto” mean), but that only makes sense if each group mean is itself reliable (which, here, is marginal for some features).
+> **Caveat:**  Because our *single-measure* (ICC(2,1)) within-group reliabilities were often only *fair* (≤0.5), these average-measure ICCs should be interpreted with caution.  You're essentially demonstrating that *more* raters produce more reliable *means*—a well-known statistical effect—rather than uncovering a deep alignment between groups.  If you wanted to know *how* well human consensus matches auto-grader consensus *per se*, you'd instead compute ICC(2,1) on the two **group means** (one “human” mean vs. one “auto” mean), but that only makes sense if each group mean is itself reliable (which, here, is marginal for some features).
 
 ---
 
@@ -1569,6 +1717,7 @@ emm_data %>%
   arrange(Feature, Model) %>%
   group_by(Feature) %>%
   gt() %>%
+  tab_options(latex.use_longtable = TRUE) %>%
   tab_header(
     title = "Table 5. Estimated Marginal Means for Significant Features"
   ) %>%
@@ -2057,7 +2206,12 @@ p_auto_human_corr <- correlation_matrix %>%
     x = "Feature",
     y = "Auto-grader"
   ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.position = "right",
+  )
 
 print(p_auto_human_corr)
 ```
@@ -2209,7 +2363,7 @@ panel_b <- df_long %>%
     .groups = "drop"
   ) %>%
   ggplot(aes(
-    x = rater_type_detailed,
+    x = reorder(rater_type_detailed, -mean_rating),
     y = mean_rating,
     fill = rater_type_detailed
   )) +
@@ -2230,8 +2384,17 @@ panel_b <- df_long %>%
     x = "Rater Type",
     y = "Mean Rating"
   ) +
-  theme_minimal(base_size = 10) +
-  theme(legend.position = "none")
+  theme(
+    legend.position = "none",
+    axis.title.x = element_blank()
+  )
+
+ggsave(
+  "figures/panel_b_rater_type_agreement.pdf",
+  panel_b,
+  width = 4,
+  height = 4
+)
 
 ```
 
@@ -2262,7 +2425,7 @@ panel_c <- auto_performance %>%
     x = "Auto-grader",
     y = "Correlation"
   ) +
-  theme_minimal(base_size = 10) +
+  theme_minimal(base_size = 16) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
@@ -2358,6 +2521,10 @@ key_findings %>%
   ) %>%
   tab_header(
     title = "Table 8. Summary of Key Statistical Findings"
+  ) %>%
+  tab_options(
+    table.width = pct(100),
+    data_row.padding = px(2)
   ) %>%
   opt_row_striping()
 ```
