@@ -710,8 +710,9 @@ ggplot(wordcount_scores, aes(x = model, y = WordCount, fill = model)) +
 
 ### 1.2 Overall Performance by Model
 
-```{r overall-model-performance}
-# Calculate overall performance metrics by model
+```{r}
+#| label: calc-overall-performance-by-model
+
 model_performance <- df_long %>%
   group_by(model) %>%
   summarise(
@@ -720,8 +721,11 @@ model_performance <- df_long %>%
     se_rating = sd_rating / sqrt(n()),
     n_ratings = n()
   )
+```
 
-# Create figure
+```{r}
+#| label: overall-model-performance-plot
+
 p_model_overall <- ggplot(
   model_performance,
   aes(x = reorder(model, -mean_rating), y = mean_rating)
@@ -761,6 +765,344 @@ ggsave(
   width = 8,
   height = 6
 )
+```
+
+#### 1.2.1 Model Preferred by Rater
+
+```{r}
+#| label: model-preferences-data-from-raters
+
+df_preferences <- read_csv(
+  "./data/data_preparation/preferences_20250606_115527.csv",
+  show_col_types = FALSE
+)
+
+# Calculate preference counts
+pref_counts <- df_preferences %>%
+  count(preferred_model, name = "count") %>%
+  mutate(
+    percentage = round(count / sum(count) * 100, 1),
+    preferred_model = tools::toTitleCase(preferred_model)
+  ) %>%
+  arrange(desc(count))
+
+# Overall preference table
+pref_counts %>%
+  gt() %>%
+  cols_label(
+    preferred_model = "Preferred Model",
+    count = "Count",
+    percentage = "Percentage (%)"
+  ) %>%
+  tab_header(
+    title = "Overall Model Preferences Across All Raters"
+  )
+```
+
+```{r}
+#| label: barplot-rater-preferences-overall
+
+p_pref_overall <- ggplot(pref_counts, aes(x = reorder(preferred_model, count), y = count)) +
+  geom_bar(stat = "identity", fill = brand_colors$primary_navy) +
+  geom_text(aes(label = paste0(count, " (", percentage, "%)")),
+    hjust = -0.1, size = 4
+  ) +
+  coord_flip() +
+  labs(
+    title = "Model Preferences Across All Raters",
+    x = "Model",
+    y = "Number of Preferences"
+  )
+
+print(p_pref_overall)
+```
+
+
+```{r}
+#| label: preferences-by-rater-student-expert
+
+pref_by_rater <- df_preferences %>%
+  # Create anonymized rater names
+  mutate(
+    rater_display = case_when(
+      rater_name == "Isabel_LLM" ~ "Student 1",
+      rater_name == "Jule_LLM" ~ "Student 2",
+      rater_name == "Lasse_LLM" ~ "Student 3",
+      rater_name == "Christoph_LLM" ~ "Expert 1",
+      rater_name == "Musti_LLM" ~ "Expert 2",
+      rater_name == "Charlotte_LLM" ~ "Expert 3",
+      # Keep original name for auto-raters
+      str_detect(rater_name, "autoLLM_") ~ str_replace(rater_name, "autoLLM_", ""),
+      TRUE ~ rater_name
+    )
+  ) %>%
+  count(rater_display, preferred_model) %>%
+  group_by(rater_display) %>%
+  mutate(
+    percentage = round(n / sum(n) * 100, 1),
+    preferred_model = tools::toTitleCase(preferred_model)
+  ) %>%
+  arrange(rater_display, desc(n))
+
+pref_by_rater %>%
+  gt(groupname_col = "rater_display") %>%
+  cols_label(
+    preferred_model = "Preferred Model",
+    n = "Count",
+    percentage = "Percentage (%)"
+  ) %>%
+  tab_header(
+    title = "Model Preferences by Individual Rater"
+  )
+```
+
+```{r}
+# Preferences by rater type (Expert vs Student)
+pref_by_rater_type <- df_preferences %>%
+  filter(grader_type == "human") %>% # Only human raters
+  mutate(
+    rater_type = case_when(
+      rater_name %in% c("Christoph_LLM", "Musti_LLM", "Charlotte_LLM") ~ "Expert",
+      rater_name %in% c("Isabel_LLM", "Jule_LLM", "Lasse_LLM") ~ "Student",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  filter(rater_type != "Other") %>%
+  count(rater_type, preferred_model) %>%
+  group_by(rater_type) %>%
+  mutate(
+    percentage = round(n / sum(n) * 100, 1),
+    preferred_model = tools::toTitleCase(preferred_model)
+  )
+
+# Dodged bar plot comparing Expert vs Student preferences
+p_pref_expert_student <- ggplot(
+  pref_by_rater_type,
+  aes(x = preferred_model, y = percentage, fill = rater_type)
+) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = paste0(percentage, "%")),
+    position = position_dodge(width = 0.7),
+    vjust = -0.3, size = 3.5
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Expert" = brand_colors$primary_navy,
+      "Student" = brand_colors$supporting_blue
+    )
+  ) +
+  labs(
+    title = "Model Preferences: Experts vs Students",
+    x = "Preferred Model",
+    y = "Percentage (%)",
+    fill = "Rater Type"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top"
+  )
+
+print(p_pref_expert_student)
+```
+
+```{r}
+#| label: barplot-preferences-expert-student-facetwrap-category
+
+pref_by_rater_type_category <- df_preferences %>%
+  filter(grader_type == "human") %>% # Only human raters
+  mutate(
+    rater_type = case_when(
+      rater_name %in% c("Christoph_LLM", "Musti_LLM", "Charlotte_LLM") ~ "Expert",
+      rater_name %in% c("Isabel_LLM", "Jule_LLM", "Lasse_LLM") ~ "Student",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  filter(rater_type != "Other") %>%
+  count(category, rater_type, preferred_model) %>%
+  group_by(category, rater_type) %>%
+  mutate(
+    percentage = round(n / sum(n) * 100, 1),
+    preferred_model = tools::toTitleCase(preferred_model)
+  ) %>%
+  # show missing data explicitly in plot
+  ungroup() %>%
+  complete(category, rater_type, preferred_model, fill = list(n = 0, percentage = 0))
+
+# Faceted dodged bar plot by category
+p_pref_expert_student_category <- ggplot(
+  pref_by_rater_type_category,
+  aes(x = preferred_model, y = percentage, fill = rater_type)
+) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  geom_text(aes(label = paste0(percentage, "%")),
+    position = position_dodge(width = 0.7),
+    vjust = -0.3, size = 3
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Expert" = brand_colors$primary_navy,
+      "Student" = brand_colors$supporting_blue
+    )
+  ) +
+  facet_wrap(~category, scales = "free_y", nrow = 3) +
+  labs(
+    title = "Model Preferences: Experts vs Students by Category",
+    x = "Preferred Model",
+    y = "Percentage (%)",
+    fill = "Rater Type"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top",
+    strip.text = element_text(size = 10, face = "bold")
+  )
+
+print(p_pref_expert_student_category)
+
+# Save the plot
+ggsave("figures/model_preferences_expert_vs_student_by_category.pdf",
+  p_pref_expert_student_category,
+  width = 8, height = 10
+)
+```
+
+```{r}
+#| label: table-preferences-by-rater-type-category
+
+pref_by_rater_type_category %>%
+  select(category, rater_type, preferred_model, n, percentage) %>%
+  arrange(category, rater_type, desc(percentage)) %>%
+  gt(groupname_col = c("category", "rater_type")) %>%
+  cols_label(
+    rater_type = "Rater Type",
+    preferred_model = "Preferred Model",
+    n = "Count",
+    percentage = "Percentage (%)"
+  ) %>%
+  tab_header(
+    title = "Model Preferences by Rater Type and Category"
+  ) %>%
+  fmt_number(columns = percentage, decimals = 1)
+```
+
+```{r}
+#| label: stats-significance-tests-model-preferences
+
+# Chi-square test for overall preferences
+pref_chisq <- chisq.test(pref_counts$count)
+
+# Create contingency table for preferences by rater type
+pref_contingency <- df_preferences %>%
+  count(grader_type, preferred_model) %>%
+  pivot_wider(names_from = preferred_model, values_from = n, values_fill = 0) %>%
+  column_to_rownames("grader_type") %>%
+  as.matrix()
+
+# Check contingency table dimensions and structure
+cat("Contingency table dimensions:", dim(pref_contingency), "\n")
+print(pref_contingency)
+
+# Chi-square test for preferences by rater type
+pref_rater_chisq <- chisq.test(pref_contingency)
+
+# Fisher's exact test (only if we have at least 2x2 table)
+if (nrow(pref_contingency) >= 2 && ncol(pref_contingency) >= 2) {
+  pref_fisher <- fisher.test(pref_contingency, simulate.p.value = TRUE)
+  fisher_p <- pref_fisher$p.value
+} else {
+  cat("Warning: Fisher's exact test requires at least 2x2 table. Skipping.\n")
+  fisher_p <- NA
+}
+
+# Binomial test for most preferred model
+most_preferred <- pref_counts$preferred_model[1]
+most_preferred_count <- pref_counts$count[1]
+total_preferences <- sum(pref_counts$count)
+
+# Test if most preferred model is significantly different from equal preference
+equal_prob <- 1 / nrow(pref_counts)
+binom_test <- binom.test(
+  most_preferred_count,
+  total_preferences,
+  p = equal_prob,
+  alternative = "greater"
+)
+```
+
+```{r}
+# Create significance summary table (conditionally include Fisher's test)
+if (!is.na(fisher_p)) {
+  sig_tests <- data.frame(
+    Test = c(
+      "Overall preference distribution",
+      "Preferences differ by rater type",
+      paste(most_preferred, "vs. equal preference"),
+      "Rater type independence (Fisher's exact)"
+    ),
+    Statistic = c(
+      sprintf("χ² = %.2f", pref_chisq$statistic),
+      sprintf("χ² = %.2f", pref_rater_chisq$statistic),
+      sprintf("Binomial p = %.4f", binom_test$p.value),
+      sprintf("Fisher's p = %.4f", fisher_p)
+    ),
+    `P-value` = c(
+      ifelse(pref_chisq$p.value < 0.001, "<0.001", sprintf("%.4f", pref_chisq$p.value)),
+      ifelse(pref_rater_chisq$p.value < 0.001, "<0.001", sprintf("%.4f", pref_rater_chisq$p.value)),
+      ifelse(binom_test$p.value < 0.001, "<0.001", sprintf("%.4f", binom_test$p.value)),
+      ifelse(fisher_p < 0.001, "<0.001", sprintf("%.4f", fisher_p))
+    ),
+    Interpretation = c(
+      ifelse(pref_chisq$p.value < 0.05, "Significant", "Not significant"),
+      ifelse(pref_rater_chisq$p.value < 0.05, "Significant", "Not significant"),
+      ifelse(binom_test$p.value < 0.05, "Significantly preferred", "Not significantly preferred"),
+      ifelse(fisher_p < 0.05, "Preferences depend on rater type", "Preferences independent of rater type")
+    )
+  )
+} else {
+  sig_tests <- data.frame(
+    Test = c(
+      "Overall preference distribution",
+      "Preferences differ by rater type",
+      paste(most_preferred, "vs. equal preference")
+    ),
+    Statistic = c(
+      sprintf("χ² = %.2f", pref_chisq$statistic),
+      sprintf("χ² = %.2f", pref_rater_chisq$statistic),
+      sprintf("Binomial p = %.4f", binom_test$p.value)
+    ),
+    `P-value` = c(
+      ifelse(pref_chisq$p.value < 0.001, "<0.001", sprintf("%.4f", pref_chisq$p.value)),
+      ifelse(pref_rater_chisq$p.value < 0.001, "<0.001", sprintf("%.4f", pref_rater_chisq$p.value)),
+      ifelse(binom_test$p.value < 0.001, "<0.001", sprintf("%.4f", binom_test$p.value))
+    ),
+    Interpretation = c(
+      ifelse(pref_chisq$p.value < 0.05, "Significant", "Not significant"),
+      ifelse(pref_rater_chisq$p.value < 0.05, "Significant", "Not significant"),
+      ifelse(binom_test$p.value < 0.05, "Significantly preferred", "Not significantly preferred")
+    )
+  )
+}
+```
+
+```{r}
+# Display significance test results
+sig_tests %>%
+  gt() %>%
+  cols_label(
+    Test = "Statistical Test",
+    Statistic = "Test Statistic",
+    `P.value` = "P-value",
+    Interpretation = "Interpretation"
+  ) %>%
+  tab_header(
+    title = "Statistical Significance Tests for Model Preferences"
+  ) %>%
+  tab_footnote(
+    footnote = "Tests whether observed preferences differ significantly from chance",
+    locations = cells_title()
+  )
 ```
 
 ### 1.3 Overall Performance by Feature
