@@ -9,6 +9,23 @@
     ]
   },
   "Packages": {
+    "BH": {
+      "Package": "BH",
+      "Version": "1.87.0-1",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Boost C++ Header Files",
+      "Date": "2024-12-17",
+      "Authors@R": "c(person(\"Dirk\", \"Eddelbuettel\", role = c(\"aut\", \"cre\"), email = \"edd@debian.org\", comment = c(ORCID = \"0000-0001-6419-907X\")), person(\"John W.\", \"Emerson\", role = \"aut\"),  person(\"Michael J.\", \"Kane\", role = \"aut\",  comment = c(ORCID = \"0000-0003-1899-6662\")))",
+      "Description": "Boost provides free peer-reviewed portable C++ source  libraries.  A large part of Boost is provided as C++ template code which is resolved entirely at compile-time without linking.  This  package aims to provide the most useful subset of Boost libraries  for template use among CRAN packages. By placing these libraries in  this package, we offer a more efficient distribution system for CRAN  as replication of this code in the sources of other packages is  avoided. As of release 1.84.0-0, the following Boost libraries are included: 'accumulators' 'algorithm' 'align' 'any' 'atomic' 'beast' 'bimap' 'bind' 'circular_buffer' 'compute' 'concept' 'config' 'container' 'date_time' 'detail' 'dynamic_bitset' 'exception' 'flyweight' 'foreach' 'functional' 'fusion' 'geometry' 'graph' 'heap' 'icl' 'integer' 'interprocess' 'intrusive' 'io' 'iostreams' 'iterator' 'lambda2' 'math' 'move' 'mp11' 'mpl' 'multiprecision' 'numeric' 'pending' 'phoenix' 'polygon' 'preprocessor' 'process' 'propery_tree' 'qvm' 'random' 'range' 'scope_exit' 'smart_ptr' 'sort' 'spirit' 'tuple' 'type_traits' 'typeof' 'unordered' 'url' 'utility' 'uuid'.",
+      "License": "BSL-1.0",
+      "URL": "https://github.com/eddelbuettel/bh, https://dirk.eddelbuettel.com/code/bh.html",
+      "BugReports": "https://github.com/eddelbuettel/bh/issues",
+      "NeedsCompilation": "no",
+      "Author": "Dirk Eddelbuettel [aut, cre] (<https://orcid.org/0000-0001-6419-907X>), John W. Emerson [aut], Michael J. Kane [aut] (<https://orcid.org/0000-0003-1899-6662>)",
+      "Maintainer": "Dirk Eddelbuettel <edd@debian.org>",
+      "Repository": "CRAN"
+    },
     "DBI": {
       "Package": "DBI",
       "Version": "1.2.3",
@@ -328,6 +345,31 @@
       "NeedsCompilation": "no",
       "Repository": "CRAN"
     },
+    "NLP": {
+      "Package": "NLP",
+      "Version": "0.3-2",
+      "Source": "Repository",
+      "Title": "Natural Language Processing Infrastructure",
+      "Authors@R": "person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\"))",
+      "Description": "Basic classes and methods for Natural Language Processing.",
+      "License": "GPL-3",
+      "Imports": [
+        "utils"
+      ],
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Enhances": [
+        "udpipe",
+        "spacyr",
+        "cleanNLP"
+      ],
+      "Encoding": "UTF-8",
+      "NeedsCompilation": "no",
+      "Author": "Kurt Hornik [aut, cre] (<https://orcid.org/0000-0003-4198-9911>)",
+      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
+      "Repository": "CRAN"
+    },
     "R6": {
       "Package": "R6",
       "Version": "2.6.1",
@@ -369,6 +411,41 @@
       "Description": "Provides color schemes for maps (and other graphics) designed by Cynthia Brewer as described at http://colorbrewer2.org.",
       "License": "Apache License 2.0",
       "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
+    "RSpectra": {
+      "Package": "RSpectra",
+      "Version": "0.16-2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Solvers for Large-Scale Eigenvalue and SVD Problems",
+      "Date": "2024-07-18",
+      "Authors@R": "c( person(\"Yixuan\", \"Qiu\", , \"yixuan.qiu@cos.name\", c(\"aut\", \"cre\")), person(\"Jiali\", \"Mei\", , \"vermouthmjl@gmail.com\", \"aut\", comment = \"Function interface of matrix operation\"), person(\"Gael\", \"Guennebaud\", , \"gael.guennebaud@inria.fr\", \"ctb\", comment = \"Eigenvalue solvers from the 'Eigen' library\"), person(\"Jitse\", \"Niesen\", , \"jitse@maths.leeds.ac.uk\", \"ctb\", comment = \"Eigenvalue solvers from the 'Eigen' library\") )",
+      "Description": "R interface to the 'Spectra' library <https://spectralib.org/> for large-scale eigenvalue and SVD problems. It is typically used to compute a few eigenvalues/vectors of an n by n matrix, e.g., the k largest eigenvalues, which is usually more efficient than eigen() if k << n. This package provides the 'eigs()' function that does the similar job as in 'Matlab', 'Octave', 'Python SciPy' and 'Julia'. It also provides the 'svds()' function to calculate the largest k singular values and corresponding singular vectors of a real matrix. The matrix to be computed on can be dense, sparse, or in the form of an operator defined by the user.",
+      "License": "MPL (>= 2)",
+      "URL": "https://github.com/yixuan/RSpectra",
+      "BugReports": "https://github.com/yixuan/RSpectra/issues",
+      "Depends": [
+        "R (>= 3.0.2)"
+      ],
+      "Imports": [
+        "Matrix (>= 1.1-0)",
+        "Rcpp (>= 0.11.5)"
+      ],
+      "Suggests": [
+        "knitr",
+        "rmarkdown",
+        "prettydoc"
+      ],
+      "LinkingTo": [
+        "Rcpp",
+        "RcppEigen (>= 0.3.3.3.0)"
+      ],
+      "VignetteBuilder": "knitr, rmarkdown",
+      "RoxygenNote": "7.1.2",
+      "NeedsCompilation": "yes",
+      "Author": "Yixuan Qiu [aut, cre], Jiali Mei [aut] (Function interface of matrix operation), Gael Guennebaud [ctb] (Eigenvalue solvers from the 'Eigen' library), Jitse Niesen [ctb] (Eigenvalue solvers from the 'Eigen' library)",
+      "Maintainer": "Yixuan Qiu <yixuan.qiu@cos.name>",
       "Repository": "CRAN"
     },
     "Rcpp": {
@@ -507,6 +584,25 @@
       "NeedsCompilation": "no",
       "Author": "Georgi N. Boshnakov [aut, cre] (<https://orcid.org/0000-0003-2839-346X>), Duncan Murdoch [ctb]",
       "Maintainer": "Georgi N. Boshnakov <georgi.boshnakov@manchester.ac.uk>",
+      "Repository": "CRAN"
+    },
+    "Rttf2pt1": {
+      "Package": "Rttf2pt1",
+      "Version": "1.3.12",
+      "Source": "Repository",
+      "Title": "'ttf2pt1' Program",
+      "Author": "Winston Chang, Andrew Weeks, Frank M. Siegert, Mark Heath, Thomas Henlick, Sergey Babkin, Turgut Uyar, Rihardas Hepas, Szalay Tamas, Johan Vromans, Petr Titera, Lei Wang, Chen Xiangyang, Zvezdan Petkovic, Rigel, I. Lee Hetherington",
+      "Maintainer": "Winston Chang <winston@stdout.org>",
+      "Description": "Contains the program 'ttf2pt1', for use with the 'extrafont' package. This product includes software developed by the 'TTF2PT1' Project and its contributors.",
+      "Depends": [
+        "R (>= 2.15)"
+      ],
+      "License": "file LICENSE",
+      "URL": "https://github.com/wch/Rttf2pt1",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.2.3",
+      "NeedsCompilation": "yes",
+      "License_is_FOSS": "yes",
       "Repository": "CRAN"
     },
     "S7": {
@@ -2595,6 +2691,48 @@
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "CRAN"
     },
+    "extrafont": {
+      "Package": "extrafont",
+      "Version": "0.19",
+      "Source": "Repository",
+      "Title": "Tools for Using Fonts",
+      "Author": "Winston Chang <winston@stdout.org>",
+      "Maintainer": "Winston Chang <winston@stdout.org>",
+      "Description": "Tools to using fonts other than the standard PostScript fonts. This package makes it easy to use system TrueType fonts and with PDF or PostScript output files, and with bitmap output files in Windows. extrafont can also be used with fonts packaged specifically to be used with, such as the fontcm package, which has Computer Modern PostScript fonts with math symbols.",
+      "Depends": [
+        "R (>= 2.15)"
+      ],
+      "Imports": [
+        "extrafontdb",
+        "grDevices",
+        "utils",
+        "Rttf2pt1"
+      ],
+      "Suggests": [
+        "fontcm"
+      ],
+      "License": "GPL-2",
+      "URL": "https://github.com/wch/extrafont",
+      "RoxygenNote": "7.1.2",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
+    "extrafontdb": {
+      "Package": "extrafontdb",
+      "Version": "1.0",
+      "Source": "Repository",
+      "Title": "Package for holding the database for the extrafont package",
+      "Author": "Winston Chang <winston@stdout.org>",
+      "Maintainer": "Winston Chang <winston@stdout.org>",
+      "Description": "Package for holding the database for the extrafont package",
+      "Depends": [
+        "R (>= 2.14)"
+      ],
+      "License": "GPL-2",
+      "URL": "https://github.com/wch/extrafontdb",
+      "Collate": "'extrafontdb.r'",
+      "Repository": "CRAN"
+    },
     "factoextra": {
       "Package": "factoextra",
       "Version": "1.0.7",
@@ -2822,6 +2960,41 @@
       "NeedsCompilation": "no",
       "Author": "Hadley Wickham [aut, cre], RStudio [cph, fnd]",
       "Maintainer": "Hadley Wickham <hadley@rstudio.com>",
+      "Repository": "CRAN"
+    },
+    "foreach": {
+      "Package": "foreach",
+      "Version": "1.5.2",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Provides Foreach Looping Construct",
+      "Authors@R": "c(person(\"Folashade\", \"Daniel\", role=\"cre\", email=\"fdaniel@microsoft.com\"), person(\"Hong\", \"Ooi\", role=\"ctb\"), person(\"Rich\", \"Calaway\", role=\"ctb\"), person(\"Microsoft\", role=c(\"aut\", \"cph\")), person(\"Steve\", \"Weston\", role=\"aut\"))",
+      "Description": "Support for the foreach looping construct.  Foreach is an idiom that allows for iterating over elements in a collection, without the use of an explicit loop counter.  This package in particular is intended to be used for its return value, rather than for its side effects.  In that sense, it is similar to the standard lapply function, but doesn't require the evaluation of a function.  Using foreach without side effects also facilitates executing the loop in parallel.",
+      "License": "Apache License (== 2.0)",
+      "URL": "https://github.com/RevolutionAnalytics/foreach",
+      "BugReports": "https://github.com/RevolutionAnalytics/foreach/issues",
+      "Depends": [
+        "R (>= 2.5.0)"
+      ],
+      "Imports": [
+        "codetools",
+        "utils",
+        "iterators"
+      ],
+      "Suggests": [
+        "randomForest",
+        "doMC",
+        "doParallel",
+        "testthat",
+        "knitr",
+        "rmarkdown"
+      ],
+      "VignetteBuilder": "knitr",
+      "RoxygenNote": "7.1.1",
+      "Collate": "'callCombine.R' 'foreach.R' 'do.R' 'foreach-ext.R' 'foreach-pkg.R' 'getDoPar.R' 'getDoSeq.R' 'getsyms.R' 'iter.R' 'nextElem.R' 'onLoad.R' 'setDoPar.R' 'setDoSeq.R' 'times.R' 'utils.R'",
+      "NeedsCompilation": "no",
+      "Author": "Folashade Daniel [cre], Hong Ooi [ctb], Rich Calaway [ctb], Microsoft [aut, cph], Steve Weston [aut]",
+      "Maintainer": "Folashade Daniel <fdaniel@microsoft.com>",
       "Repository": "CRAN"
     },
     "fs": {
@@ -3254,6 +3427,49 @@
       "NeedsCompilation": "no",
       "Author": "Constantin Ahlmann-Eltze [aut, cre, ctb] (<https://orcid.org/0000-0002-3762-068X>, @const_ae), Indrajeet Patil [aut, ctb] (<https://orcid.org/0000-0003-1995-6531>, @patilindrajeets)",
       "Maintainer": "Constantin Ahlmann-Eltze <artjom31415@googlemail.com>",
+      "Repository": "CRAN"
+    },
+    "glmnet": {
+      "Package": "glmnet",
+      "Version": "4.1-9",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Lasso and Elastic-Net Regularized Generalized Linear Models",
+      "Date": "2025-05-16",
+      "Authors@R": "c(person(\"Jerome\", \"Friedman\", role=c(\"aut\")), person(\"Trevor\", \"Hastie\", role=c(\"aut\", \"cre\"), email = \"hastie@stanford.edu\"), person(\"Rob\", \"Tibshirani\", role=c(\"aut\")), person(\"Balasubramanian\", \"Narasimhan\", role=c(\"aut\")), person(\"Kenneth\",\"Tay\",role=c(\"aut\")), person(\"Noah\", \"Simon\", role=c(\"aut\")), person(\"Junyang\", \"Qian\", role=c(\"ctb\")), person(\"James\", \"Yang\", role=c(\"aut\")))",
+      "Depends": [
+        "R (>= 3.6.0)",
+        "Matrix (>= 1.0-6)"
+      ],
+      "Imports": [
+        "methods",
+        "utils",
+        "foreach",
+        "shape",
+        "survival",
+        "Rcpp"
+      ],
+      "Suggests": [
+        "knitr",
+        "lars",
+        "testthat",
+        "xfun",
+        "rmarkdown"
+      ],
+      "SystemRequirements": "C++17",
+      "Description": "Extremely efficient procedures for fitting the entire lasso or elastic-net regularization path for linear regression, logistic and multinomial regression models, Poisson regression, Cox model,  multiple-response Gaussian, and the grouped multinomial regression; see <doi:10.18637/jss.v033.i01> and <doi:10.18637/jss.v039.i05>. There are two new and important additions. The family argument can be a GLM family object, which opens the door to any programmed family (<doi:10.18637/jss.v106.i01>). This comes with a modest computational cost, so when the built-in families suffice, they should be used instead.  The other novelty is the relax option, which refits each of the active sets in the path unpenalized. The algorithm uses cyclical coordinate descent in a path-wise fashion, as described in the papers cited.",
+      "License": "GPL-2",
+      "VignetteBuilder": "knitr",
+      "Encoding": "UTF-8",
+      "URL": "https://glmnet.stanford.edu",
+      "RoxygenNote": "7.3.2",
+      "LinkingTo": [
+        "RcppEigen",
+        "Rcpp"
+      ],
+      "NeedsCompilation": "yes",
+      "Author": "Jerome Friedman [aut], Trevor Hastie [aut, cre], Rob Tibshirani [aut], Balasubramanian Narasimhan [aut], Kenneth Tay [aut], Noah Simon [aut], Junyang Qian [ctb], James Yang [aut]",
+      "Maintainer": "Trevor Hastie <hastie@stanford.edu>",
       "Repository": "CRAN"
     },
     "globals": {
@@ -3915,6 +4131,70 @@
       "Maintainer": "Rich FitzJohn <rich.fitzjohn@gmail.com>",
       "Repository": "CRAN"
     },
+    "igraph": {
+      "Package": "igraph",
+      "Version": "2.1.4",
+      "Source": "Repository",
+      "Title": "Network Analysis and Visualization",
+      "Authors@R": "c( person(\"Gábor\", \"Csárdi\", , \"csardi.gabor@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0001-7098-9676\")), person(\"Tamás\", \"Nepusz\", , \"ntamas@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0002-1451-338X\")), person(\"Vincent\", \"Traag\", role = \"aut\", comment = c(ORCID = \"0000-0003-3170-3879\")), person(\"Szabolcs\", \"Horvát\", , \"szhorvat@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0002-3100-523X\")), person(\"Fabio\", \"Zanini\", , \"fabio.zanini@unsw.edu.au\", role = \"aut\", comment = c(ORCID = \"0000-0001-7097-8539\")), person(\"Daniel\", \"Noom\", role = \"aut\"), person(\"Kirill\", \"Müller\", , \"kirill@cynkra.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0002-1416-3412\")), person(\"Maëlle\", \"Salmon\", role = \"ctb\"), person(\"Michael\", \"Antonov\", role = \"ctb\"), person(\"Chan Zuckerberg Initiative\", role = \"fnd\") )",
+      "Description": "Routines for simple graphs and network analysis. It can handle large graphs very well and provides functions for generating random and regular graphs, graph visualization, centrality methods and much more.",
+      "License": "GPL (>= 2)",
+      "URL": "https://r.igraph.org/, https://igraph.org/, https://igraph.discourse.group/",
+      "BugReports": "https://github.com/igraph/rigraph/issues",
+      "Depends": [
+        "methods",
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "cli",
+        "graphics",
+        "grDevices",
+        "lifecycle",
+        "magrittr",
+        "Matrix",
+        "pkgconfig (>= 2.0.0)",
+        "rlang",
+        "stats",
+        "utils",
+        "vctrs"
+      ],
+      "Suggests": [
+        "ape (>= 5.7-0.1)",
+        "callr",
+        "decor",
+        "digest",
+        "igraphdata",
+        "knitr",
+        "rgl (>= 1.3.14)",
+        "rmarkdown",
+        "scales",
+        "stats4",
+        "tcltk",
+        "testthat",
+        "vdiffr",
+        "withr"
+      ],
+      "Enhances": [
+        "graph"
+      ],
+      "LinkingTo": [
+        "cpp11 (>= 0.5.0)"
+      ],
+      "VignetteBuilder": "knitr",
+      "Config/Needs/build": "roxygen2, devtools, irlba, pkgconfig, igraph/igraph.r2cdocs, moodymudskipper/devtag",
+      "Config/Needs/coverage": "covr",
+      "Config/Needs/website": "readr",
+      "Config/testthat/edition": "3",
+      "Config/testthat/parallel": "true",
+      "Config/testthat/start-first": "vs-es, scan, vs-operators, weakref, watts.strogatz.game",
+      "Encoding": "UTF-8",
+      "RoxygenNote": "7.3.2.9000",
+      "SystemRequirements": "libxml2 (optional), glpk (>= 4.57, optional)",
+      "NeedsCompilation": "yes",
+      "Author": "Gábor Csárdi [aut] (<https://orcid.org/0000-0001-7098-9676>), Tamás Nepusz [aut] (<https://orcid.org/0000-0002-1451-338X>), Vincent Traag [aut] (<https://orcid.org/0000-0003-3170-3879>), Szabolcs Horvát [aut] (<https://orcid.org/0000-0002-3100-523X>), Fabio Zanini [aut] (<https://orcid.org/0000-0001-7097-8539>), Daniel Noom [aut], Kirill Müller [aut, cre] (<https://orcid.org/0000-0002-1416-3412>), Maëlle Salmon [ctb], Michael Antonov [ctb], Chan Zuckerberg Initiative [fnd]",
+      "Maintainer": "Kirill Müller <kirill@cynkra.com>",
+      "Repository": "CRAN"
+    },
     "insight": {
       "Package": "insight",
       "Version": "1.3.0",
@@ -4129,6 +4409,29 @@
       "NeedsCompilation": "yes",
       "Author": "Hadley Wickham [aut, cre] (<https://orcid.org/0000-0003-4757-117X>), Claus O. Wilke [aut] (Original author, <https://orcid.org/0000-0002-7470-9261>), Thomas Lin Pedersen [aut] (<https://orcid.org/0000-0002-5147-4711>)",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
+      "Repository": "CRAN"
+    },
+    "iterators": {
+      "Package": "iterators",
+      "Version": "1.0.14",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Provides Iterator Construct",
+      "Authors@R": "c(person(\"Folashade\", \"Daniel\", role=\"cre\", email=\"fdaniel@microsoft.com\"), person(\"Revolution\", \"Analytics\", role=c(\"aut\", \"cph\")), person(\"Steve\", \"Weston\", role=\"aut\"))",
+      "Description": "Support for iterators, which allow a programmer to traverse through all the elements of a vector, list, or other collection of data.",
+      "URL": "https://github.com/RevolutionAnalytics/iterators",
+      "Depends": [
+        "R (>= 2.5.0)",
+        "utils"
+      ],
+      "Suggests": [
+        "RUnit",
+        "foreach"
+      ],
+      "License": "Apache License (== 2.0)",
+      "NeedsCompilation": "no",
+      "Author": "Folashade Daniel [cre], Revolution Analytics [aut, cph], Steve Weston [aut]",
+      "Maintainer": "Folashade Daniel <fdaniel@microsoft.com>",
       "Repository": "CRAN"
     },
     "jquerylib": {
@@ -5053,6 +5356,28 @@
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
       "Repository": "CRAN"
     },
+    "modeltools": {
+      "Package": "modeltools",
+      "Version": "0.2-24",
+      "Source": "Repository",
+      "Title": "Tools and Classes for Statistical Models",
+      "Date": "2025-05-02",
+      "Authors@R": "c(person(given = \"Torsten\", family = \"Hothorn\", role = c(\"aut\", \"cre\"), email = \"Torsten.Hothorn@R-project.org\",  comment = c(ORCID = \"0000-0001-8301-0471\")), person(given = \"Friedrich\", family = \"Leisch\", role = \"aut\", comment = c(ORCID = \"0000-0001-7278-1983\")), person(given = \"Achim\", family = \"Zeileis\", role = \"aut\", comment = c(ORCID = \"0000-0003-0918-3766\")))",
+      "Description": "A collection of tools to deal with statistical models.  The functionality is experimental and the user interface is likely to change in the future. The documentation is rather terse, but packages `coin' and `party' have some working examples. However, if you find the implemented ideas interesting we would be very interested in a discussion of this proposal. Contributions are more than welcome!",
+      "Depends": [
+        "stats",
+        "stats4"
+      ],
+      "Imports": [
+        "methods"
+      ],
+      "LazyLoad": "yes",
+      "License": "GPL-2",
+      "NeedsCompilation": "no",
+      "Author": "Torsten Hothorn [aut, cre] (ORCID: <https://orcid.org/0000-0001-8301-0471>), Friedrich Leisch [aut] (ORCID: <https://orcid.org/0000-0001-7278-1983>), Achim Zeileis [aut] (ORCID: <https://orcid.org/0000-0003-0918-3766>)",
+      "Maintainer": "Torsten Hothorn <Torsten.Hothorn@R-project.org>",
+      "Repository": "CRAN"
+    },
     "multcompView": {
       "Package": "multcompView",
       "Version": "0.1-10",
@@ -5099,6 +5424,39 @@
       "NeedsCompilation": "yes",
       "Author": "Alan Genz [aut], Frank Bretz [aut], Tetsuhisa Miwa [aut], Xuefei Mi [aut], Friedrich Leisch [ctb], Fabian Scheipl [ctb], Bjoern Bornkamp [ctb] (<https://orcid.org/0000-0002-6294-8185>), Martin Maechler [ctb] (<https://orcid.org/0000-0002-8685-9910>), Torsten Hothorn [aut, cre] (<https://orcid.org/0000-0001-8301-0471>)",
       "Maintainer": "Torsten Hothorn <Torsten.Hothorn@R-project.org>",
+      "Repository": "CRAN"
+    },
+    "network": {
+      "Package": "network",
+      "Version": "1.19.0",
+      "Source": "Repository",
+      "Date": "2024-12-08",
+      "Title": "Classes for Relational Data",
+      "Authors@R": "c( person(\"Carter T.\", \"Butts\", role=c(\"aut\",\"cre\"), email=\"buttsc@uci.edu\"), person(\"David\", \"Hunter\", role=c(\"ctb\"), email=\"dhunter@stat.psu.edu\"), person(\"Mark\", \"Handcock\", role=c(\"ctb\"), email=\"handcock@stat.ucla.edu\"), person(\"Skye\", \"Bender-deMoll\", role=c(\"ctb\"), email=\"skyebend@uw.edu\"), person(\"Jeffrey\", \"Horner\", role=c(\"ctb\"), email=\"jeffrey.horner@gmail.com\"), person(\"Li\", \"Wang\", role=c(\"ctb\"), email=\"lxwang@uw.edu\"), person(\"Pavel N.\", \"Krivitsky\", role=c(\"ctb\"), email=\"pavel@statnet.org\", comment=c(ORCID=\"0000-0002-9101-3362\")), person(\"Brendan\", \"Knapp\", role=c(\"ctb\"), email=\"brendan.g.knapp@gmail.com\", comment=c(ORCID=\"0000-0003-3284-4972\")), person(\"Michał\", \"Bojanowski\", role=c(\"ctb\"), email = \"michal2992@gmail.com\", comment = c(ORCID = \"0000-0001-7503-852X\")), person(\"Chad\", \"Klumb\", role=c(\"ctb\"), email=\"cklumb@gmail.com\"))",
+      "Maintainer": "Carter T. Butts <buttsc@uci.edu>",
+      "Depends": [
+        "R (>= 2.10)",
+        "utils"
+      ],
+      "Imports": [
+        "tibble",
+        "magrittr",
+        "statnet.common (>= 4.5)",
+        "stats"
+      ],
+      "Suggests": [
+        "sna",
+        "testthat",
+        "covr"
+      ],
+      "Description": "Tools to create and modify network objects.  The network class can represent a range of relational data types, and supports arbitrary vertex/edge/graph attributes.",
+      "License": "GPL (>= 2)",
+      "URL": "https://statnet.org/",
+      "RoxygenNote": "7.3.2.9000",
+      "Collate": "'access.R' 'as.edgelist.R' 'assignment.R' 'coercion.R' 'constructors.R' 'dataframe.R' 'fileio.R' 'layout.R' 'misc.R' 'network-package.R' 'operators.R' 'plot.R' 'printsum.R' 'zzz.R'",
+      "Encoding": "UTF-8",
+      "NeedsCompilation": "yes",
+      "Author": "Carter T. Butts [aut, cre], David Hunter [ctb], Mark Handcock [ctb], Skye Bender-deMoll [ctb], Jeffrey Horner [ctb], Li Wang [ctb], Pavel N. Krivitsky [ctb] (<https://orcid.org/0000-0002-9101-3362>), Brendan Knapp [ctb] (<https://orcid.org/0000-0003-3284-4972>), Michał Bojanowski [ctb] (<https://orcid.org/0000-0001-7503-852X>), Chad Klumb [ctb]",
       "Repository": "CRAN"
     },
     "nlme": {
@@ -6163,6 +6521,142 @@
       "Maintainer": "Kenneth Benoit <kbenoit@lse.ac.uk>",
       "Repository": "CRAN"
     },
+    "quanteda.sentiment": {
+      "Package": "quanteda.sentiment",
+      "Version": "0.31",
+      "Source": "GitHub",
+      "Title": "Sentiment Analysis using 'quanteda'",
+      "Authors@R": "c( person(\"Kenneth\", \"Benoit\", email = \"kbenoit@lse.ac.uk\", role = c(\"aut\", \"cre\", \"cph\")) )",
+      "Description": "Adds functions and dictionaries for computing sentiment using the 'quanteda' package.",
+      "Depends": [
+        "R (>= 4.1.0)",
+        "quanteda (>= 3.2.1)",
+        "methods"
+      ],
+      "Imports": [
+        "Matrix",
+        "stringi"
+      ],
+      "License": "GPL-3",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "RoxygenNote": "7.3.1",
+      "Suggests": [
+        "covr",
+        "ggplot2",
+        "knitr",
+        "rmarkdown",
+        "spelling",
+        "testthat"
+      ],
+      "Roxygen": "list(markdown = TRUE)",
+      "Language": "en-GB",
+      "VignetteBuilder": "knitr",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "quanteda.sentiment",
+      "RemoteUsername": "quanteda",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "934c1e1f0b1cdf6d9353df0a3759f869f573b6af",
+      "NeedsCompilation": "no",
+      "Author": "Kenneth Benoit [aut, cre, cph]",
+      "Maintainer": "Kenneth Benoit <kbenoit@lse.ac.uk>"
+    },
+    "quanteda.textmodels": {
+      "Package": "quanteda.textmodels",
+      "Version": "0.9.10",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Scaling Models and Classifiers for Textual Data",
+      "Description": "Scaling models and classifiers for sparse matrix objects representing  textual data in the form of a document-feature matrix.  Includes original  implementations of 'Laver', 'Benoit', and Garry's (2003) <doi:10.1017/S0003055403000698>, 'Wordscores' model, the Perry and 'Benoit' (2017) <doi:10.48550/arXiv.1710.08963> class affinity scaling model,  and the 'Slapin' and 'Proksch' (2008) <doi:10.1111/j.1540-5907.2008.00338.x> 'wordfish' model, as well as methods for correspondence analysis, latent semantic analysis, and fast Naive Bayes and linear 'SVMs' specially designed for sparse textual data.",
+      "Authors@R": "c(  person(\"Kenneth\", \"Benoit\", email = \"kbenoit@quanteda.org\", role = c(\"cre\", \"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-0797-564X\")),  person(\"Kohei\", \"Watanabe\", email = \"watanabe.kohei@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0001-6519-5265\")),  person(\"Haiyan\", \"Wang\", email = \"whyinsa@yahoo.com\", role = \"aut\", comment = c(ORCID = \"0000-0003-4992-4311\")), person(\"Patrick O.\", \"Perry\", email = \"patperry@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0001-7460-127X\")), person(\"Benjamin\", \"Lauderdale\", email = \"b.e.lauderdale@lse.ac.uk\", role = \"aut\", comment = c(ORCID = \"0000-0003-3090-0969\")),     person(\"Johannes\", \"Gruber\", email = \"JohannesB.Gruber@gmail.com\", role = \"aut\", comment = c(ORCID = \"0000-0001-9177-1772\")), person(\"William\", \"Lowe\", email = \"lowe@hertie-school.org\", role = \"aut\", comment = c(ORCID = \"0000-0002-1549-6163\")), person(\"Vikas\", \"Sindhwani\", email = \"vikas.sindhwani@gmail.com\", role = \"cph\",  comment = \"authored svmlin C++ source code\"), person(\"European Research Council\", role = \"fnd\", comment = \"ERC-2011-StG 283794-QUANTESS\") )",
+      "Depends": [
+        "R (>= 3.1.0)",
+        "methods"
+      ],
+      "Imports": [
+        "glmnet",
+        "Matrix (>= 1.2)",
+        "quanteda (>= 4.0.0)",
+        "RSpectra",
+        "Rcpp (>= 0.12.12)",
+        "stringi"
+      ],
+      "Suggests": [
+        "ca",
+        "covr",
+        "fastNaiveBayes",
+        "knitr",
+        "lsa",
+        "microbenchmark",
+        "naivebayes",
+        "quanteda.textplots",
+        "spelling",
+        "testthat",
+        "rmarkdown"
+      ],
+      "LinkingTo": [
+        "Rcpp",
+        "RcppArmadillo (>= 0.7.600.1.0)",
+        "quanteda"
+      ],
+      "URL": "https://github.com/quanteda/quanteda.textmodels",
+      "License": "GPL-3",
+      "Encoding": "UTF-8",
+      "LazyData": "true",
+      "Language": "en-GB",
+      "RoxygenNote": "7.3.2",
+      "Collate": "'RcppExports.R' 'quanteda.textmodels-package.R' 'data-documentation.R' 'textmodel-methods.R' 'textmodel_affinity.R' 'textmodel_ca.R' 'textmodel_lsa.R' 'textmodel_lr.R' 'textmodel_nb.R' 'textmodel_svmlin.R' 'textmodel_wordfish.R' 'textmodel_wordscores.R' 'textplot_influence.R' 'utils.R'",
+      "VignetteBuilder": "knitr",
+      "NeedsCompilation": "yes",
+      "Author": "Kenneth Benoit [cre, aut, cph] (<https://orcid.org/0000-0002-0797-564X>), Kohei Watanabe [aut] (<https://orcid.org/0000-0001-6519-5265>), Haiyan Wang [aut] (<https://orcid.org/0000-0003-4992-4311>), Patrick O. Perry [aut] (<https://orcid.org/0000-0001-7460-127X>), Benjamin Lauderdale [aut] (<https://orcid.org/0000-0003-3090-0969>), Johannes Gruber [aut] (<https://orcid.org/0000-0001-9177-1772>), William Lowe [aut] (<https://orcid.org/0000-0002-1549-6163>), Vikas Sindhwani [cph] (authored svmlin C++ source code), European Research Council [fnd] (ERC-2011-StG 283794-QUANTESS)",
+      "Maintainer": "Kenneth Benoit <kbenoit@quanteda.org>",
+      "Repository": "CRAN"
+    },
+    "quanteda.textplots": {
+      "Package": "quanteda.textplots",
+      "Version": "0.95",
+      "Source": "Repository",
+      "Title": "Plots for the Quantitative Analysis of Textual Data",
+      "Authors@R": "c(  person(\"Kenneth\", \"Benoit\", email = \"kbenoit@lse.ac.uk\", role = c(\"cre\", \"aut\", \"cph\"), comment = c(ORCID = \"0000-0002-0797-564X\")),  person(\"Kohei\", \"Watanabe\", email = \"watanabe.kohei@gmail.com\", role = c(\"aut\"), comment = c(ORCID = \"0000-0001-6519-5265\")),  person(\"Haiyan\", \"Wang\", email = \"whyinsa@yahoo.com\", role = \"aut\", comment = c(ORCID = \"0000-0003-4992-4311\")), person(\"Adam\", \"Obeng\", email = \"quanteda@binaryeagle.com\", role = \"aut\", comment = c(ORCID = \"0000-0002-2906-4775\")), person(\"Stefan\", \"Müller\", email = \"mullers@tcd.ie\", role = \"aut\", comment = c(ORCID = \"0000-0002-6315-4125\")), person(\"Akitaka\", \"Matsuo\", email = \"a.matsuo@lse.ac.uk\", role = \"aut\", comment = c(ORCID = \"0000-0002-3323-6330\")), person(\"Ian\", \"Fellows\", email = \"ian@fellstat.com\", role = \"cph\",  comment = \"authored wordcloud C source code (modified)\"), person(\"European Research Council\", role = \"fnd\", comment = \"ERC-2011-StG 283794-QUANTESS\") )",
+      "Description": "Plotting functions for visualising textual data.  Extends 'quanteda' and  related packages with plot methods designed specifically for text data, textual statistics,  and models fit to textual data. Plot types include word clouds, lexical dispersion plots,  scaling plots, network visualisations, and word 'keyness' plots.",
+      "License": "GPL-3",
+      "Imports": [
+        "quanteda",
+        "extrafont",
+        "ggplot2",
+        "ggrepel",
+        "grid",
+        "sna",
+        "igraph",
+        "Matrix",
+        "methods",
+        "network",
+        "RColorBrewer",
+        "Rcpp (>= 0.12.12)",
+        "stringi"
+      ],
+      "LinkingTo": [
+        "Rcpp"
+      ],
+      "Suggests": [
+        "knitr",
+        "quanteda.textmodels",
+        "quanteda.textstats",
+        "rmarkdown",
+        "spelling",
+        "testthat",
+        "wordcloud"
+      ],
+      "Encoding": "UTF-8",
+      "BugReports": "https://github.com/quanteda/quanteda.textplots/issues",
+      "Language": "en-GB",
+      "RoxygenNote": "7.3.2",
+      "NeedsCompilation": "yes",
+      "Author": "Kenneth Benoit [cre, aut, cph] (<https://orcid.org/0000-0002-0797-564X>), Kohei Watanabe [aut] (<https://orcid.org/0000-0001-6519-5265>), Haiyan Wang [aut] (<https://orcid.org/0000-0003-4992-4311>), Adam Obeng [aut] (<https://orcid.org/0000-0002-2906-4775>), Stefan Müller [aut] (<https://orcid.org/0000-0002-6315-4125>), Akitaka Matsuo [aut] (<https://orcid.org/0000-0002-3323-6330>), Ian Fellows [cph] (authored wordcloud C source code (modified)), European Research Council [fnd] (ERC-2011-StG 283794-QUANTESS)",
+      "Maintainer": "Kenneth Benoit <kbenoit@lse.ac.uk>",
+      "Repository": "CRAN"
+    },
     "quanteda.textstats": {
       "Package": "quanteda.textstats",
       "Version": "0.97.2",
@@ -7169,6 +7663,112 @@
       "Maintainer": "Simon Potter <simon@sjp.co.nz>",
       "Repository": "CRAN"
     },
+    "shape": {
+      "Package": "shape",
+      "Version": "1.4.6.1",
+      "Source": "Repository",
+      "Title": "Functions for Plotting Graphical Shapes, Colors",
+      "Author": "Karline Soetaert <karline.soetaert@nioz.nl>",
+      "Maintainer": "Karline Soetaert <karline.soetaert@nioz.nl>",
+      "Depends": [
+        "R (>= 2.01)"
+      ],
+      "Imports": [
+        "stats",
+        "graphics",
+        "grDevices"
+      ],
+      "Description": "Functions for plotting graphical shapes such as ellipses, circles, cylinders, arrows, ...",
+      "License": "GPL (>= 3)",
+      "NeedsCompilation": "no",
+      "Repository": "CRAN"
+    },
+    "slam": {
+      "Package": "slam",
+      "Version": "0.1-55",
+      "Source": "Repository",
+      "Title": "Sparse Lightweight Arrays and Matrices",
+      "Authors@R": "c(person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\")), person(\"David\", \"Meyer\", role = \"aut\", email = \"David.Meyer@R-project.org\", comment = c(ORCID = \"0000-0002-5196-3048\")), person(\"Christian\", \"Buchta\", role = \"aut\"))",
+      "Description": "Data structures and algorithms for sparse arrays and matrices, based on index arrays and simple triplet representations, respectively.",
+      "Depends": [
+        "R (>= 3.4.0)"
+      ],
+      "Imports": [
+        "stats"
+      ],
+      "Enhances": [
+        "Matrix",
+        "SparseM",
+        "spam"
+      ],
+      "License": "GPL-2",
+      "NeedsCompilation": "yes",
+      "Author": "Kurt Hornik [aut, cre] (<https://orcid.org/0000-0003-4198-9911>), David Meyer [aut] (<https://orcid.org/0000-0002-5196-3048>), Christian Buchta [aut]",
+      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
+      "Repository": "CRAN"
+    },
+    "sna": {
+      "Package": "sna",
+      "Version": "2.8",
+      "Source": "Repository",
+      "Date": "2024-09-07",
+      "Title": "Tools for Social Network Analysis",
+      "Authors@R": "person(given=c(\"Carter\", \"T.\"), family=\"Butts\", role=c(\"aut\",\"cre\",\"cph\"), email = \"buttsc@uci.edu\")",
+      "Depends": [
+        "R (>= 2.0.0)",
+        "utils",
+        "statnet.common",
+        "network"
+      ],
+      "Suggests": [
+        "rgl",
+        "numDeriv",
+        "SparseM"
+      ],
+      "Description": "A range of tools for social network analysis, including node and graph-level indices, structural distance and covariance methods, structural equivalence detection, network regression, random graph generation, and 2D/3D network visualization.",
+      "License": "GPL (>= 2)",
+      "URL": "https://statnet.org",
+      "NeedsCompilation": "yes",
+      "Author": "Carter T. Butts [aut, cre, cph]",
+      "Maintainer": "Carter T. Butts <buttsc@uci.edu>",
+      "Repository": "CRAN"
+    },
+    "statnet.common": {
+      "Package": "statnet.common",
+      "Version": "4.12.0",
+      "Source": "Repository",
+      "Date": "2025-05-30",
+      "Title": "Common R Scripts and Utilities Used by the Statnet Project Software",
+      "Authors@R": "c( person(c(\"Pavel\", \"N.\"), \"Krivitsky\", role=c(\"aut\",\"cre\"), email=\"pavel@statnet.org\", comment=c(ORCID=\"0000-0002-9101-3362\", affiliation=\"University of New South Wales\")), person(\"Skye\", \"Bender-deMoll\", role=c(\"ctb\"), email=\"skyebend@uw.edu\"), person(\"Chad\", \"Klumb\", role=c(\"ctb\"), email=\"cklumb@gmail.com\", comment=c(affiliation=\"University of Washington\")), person(\"Michał\", \"Bojanowski\", role=c(\"ctb\"), email=\"michal2992@gmail.com\", comment=c(ORCID=\"0000-0001-7503-852X\")))",
+      "Description": "Non-statistical utilities used by the software developed by the Statnet Project. They may also be of use to others.",
+      "Depends": [
+        "R (>= 4.1)"
+      ],
+      "Imports": [
+        "utils",
+        "methods",
+        "coda",
+        "parallel",
+        "tools",
+        "Matrix"
+      ],
+      "BugReports": "https://github.com/statnet/statnet.common/issues",
+      "License": "GPL-3 + file LICENSE",
+      "URL": "https://statnet.org",
+      "RoxygenNote": "7.3.2.9000",
+      "Encoding": "UTF-8",
+      "Suggests": [
+        "covr",
+        "roxygen2",
+        "rlang (>= 1.1.1)",
+        "purrr",
+        "MASS"
+      ],
+      "NeedsCompilation": "yes",
+      "Author": "Pavel N. Krivitsky [aut, cre] (ORCID: <https://orcid.org/0000-0002-9101-3362>, affiliation: University of New South Wales), Skye Bender-deMoll [ctb], Chad Klumb [ctb] (affiliation: University of Washington), Michał Bojanowski [ctb] (ORCID: <https://orcid.org/0000-0001-7503-852X>)",
+      "Maintainer": "Pavel N. Krivitsky <pavel@statnet.org>",
+      "Repository": "CRAN"
+    },
     "stopwords": {
       "Package": "stopwords",
       "Version": "2.3",
@@ -7734,6 +8334,85 @@
       "NeedsCompilation": "no",
       "Author": "Yihui Xie [aut, cre, cph] (<https://orcid.org/0000-0003-0645-5666>), Posit Software, PBC [cph, fnd], Christophe Dervieux [ctb] (<https://orcid.org/0000-0003-4474-2498>), Devon Ryan [ctb] (<https://orcid.org/0000-0002-8549-0971>), Ethan Heinzen [ctb], Fernando Cagua [ctb]",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
+      "Repository": "CRAN"
+    },
+    "tm": {
+      "Package": "tm",
+      "Version": "0.7-16",
+      "Source": "Repository",
+      "Title": "Text Mining Package",
+      "Date": "2025-02-19",
+      "Authors@R": "c(person(\"Ingo\", \"Feinerer\", role = \"aut\", email = \"feinerer@logic.at\", comment = c(ORCID = \"0000-0001-7656-8338\")), person(\"Kurt\", \"Hornik\", role = c(\"aut\", \"cre\"), email = \"Kurt.Hornik@R-project.org\", comment = c(ORCID = \"0000-0003-4198-9911\")), person(\"Artifex Software, Inc.\", role = c(\"ctb\", \"cph\"), comment = \"pdf_info.ps taken from GPL Ghostscript\"))",
+      "Depends": [
+        "R (>= 3.4.0)",
+        "NLP (>= 0.2-0)"
+      ],
+      "Imports": [
+        "Rcpp",
+        "parallel",
+        "slam (>= 0.1-37)",
+        "stats",
+        "tools",
+        "utils",
+        "graphics",
+        "xml2"
+      ],
+      "LinkingTo": [
+        "BH",
+        "Rcpp"
+      ],
+      "Suggests": [
+        "antiword",
+        "filehash",
+        "methods",
+        "pdftools",
+        "Rcampdf",
+        "Rgraphviz",
+        "Rpoppler",
+        "SnowballC",
+        "testthat",
+        "tm.lexicon.GeneralInquirer"
+      ],
+      "Description": "A framework for text mining applications within R.",
+      "License": "GPL-3",
+      "URL": "https://tm.r-forge.r-project.org/",
+      "Additional_repositories": "https://datacube.wu.ac.at",
+      "NeedsCompilation": "yes",
+      "Author": "Ingo Feinerer [aut] (<https://orcid.org/0000-0001-7656-8338>), Kurt Hornik [aut, cre] (<https://orcid.org/0000-0003-4198-9911>), Artifex Software, Inc. [ctb, cph] (pdf_info.ps taken from GPL Ghostscript)",
+      "Maintainer": "Kurt Hornik <Kurt.Hornik@R-project.org>",
+      "Repository": "CRAN"
+    },
+    "topicmodels": {
+      "Package": "topicmodels",
+      "Version": "0.2-17",
+      "Source": "Repository",
+      "Type": "Package",
+      "Title": "Topic Models",
+      "Authors@R": "c(person(\"Bettina\", \"Grün\", role = c(\"aut\", \"cre\"), email = \"Bettina.Gruen@R-project.org\", comment = c(ORCID = \"0000-0001-7265-4773\")), person(\"Kurt\", \"Hornik\", role = \"aut\", comment = c(ORCID = \"0000-0003-4198-9911\")), person(\"David M\", \"Blei\", role = c(\"ctb\", \"cph\"), comment = \"VEM estimation of LDA and CTM\"), person(\"John D\", \"Lafferty\", role = c(\"ctb\", \"cph\"), comment = \"VEM estimation of CTM\"), person(\"Xuan-Hieu\", \"Phan\", role = c(\"ctb\", \"cph\"), comment = \"MCMC estimation of LDA\"), person(\"Makoto\", \"Matsumoto\", role = c(\"ctb\", \"cph\"), comment = \"Mersenne Twister RNG\"), person(\"Takuji\", \"Nishimura\", role = c(\"ctb\", \"cph\"), comment = \"Mersenne Twister RNG\"), person(\"Shawn\", \"Cokus\", role = \"ctb\", comment = \"Mersenne Twister RNG\"))",
+      "Description": "Provides an interface to the C code for Latent Dirichlet Allocation (LDA) models and Correlated Topics Models (CTM) by David M. Blei and co-authors and the C++ code for fitting LDA models using Gibbs sampling by Xuan-Hieu Phan and co-authors.",
+      "Depends": [
+        "R (>= 3.5.0)"
+      ],
+      "Imports": [
+        "stats4",
+        "methods",
+        "modeltools",
+        "slam",
+        "tm (>= 0.6)"
+      ],
+      "Suggests": [
+        "lattice",
+        "lda",
+        "OAIHarvester",
+        "SnowballC"
+      ],
+      "SystemRequirements": "GNU Scientific Library version >= 1.8",
+      "License": "GPL-2",
+      "Encoding": "UTF-8",
+      "LazyLoad": "yes",
+      "NeedsCompilation": "yes",
+      "Author": "Bettina Grün [aut, cre] (<https://orcid.org/0000-0001-7265-4773>), Kurt Hornik [aut] (<https://orcid.org/0000-0003-4198-9911>), David M Blei [ctb, cph] (VEM estimation of LDA and CTM), John D Lafferty [ctb, cph] (VEM estimation of CTM), Xuan-Hieu Phan [ctb, cph] (MCMC estimation of LDA), Makoto Matsumoto [ctb, cph] (Mersenne Twister RNG), Takuji Nishimura [ctb, cph] (Mersenne Twister RNG), Shawn Cokus [ctb] (Mersenne Twister RNG)",
+      "Maintainer": "Bettina Grün <Bettina.Gruen@R-project.org>",
       "Repository": "CRAN"
     },
     "tzdb": {
