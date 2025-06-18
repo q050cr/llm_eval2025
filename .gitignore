@@ -33,7 +33,7 @@ logs/
 # additional dirs
 notebooks/test/
 
-# Explizit files
+# Explicit files
 main.py
 llm_eval2025.qmd
 _quarto.yml

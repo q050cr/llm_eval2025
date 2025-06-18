@@ -1,0 +1,1114 @@
+---
+title: "Linguistic Features of AI-Generated Cardiology Responses: A Text Mining Analysis"
+author: "Christoph Reich"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    echo: false
+    code-fold: true
+    code-tools: true
+    code-summary: "Show the code"
+    theme: cosmo
+    fig-width: 10
+    fig-height: 8
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+    echo: false
+    fig-width: 7
+    fig-height: 5
+    geometry:
+      - top=20mm
+      - left=15mm
+      - right=15mm
+      - bottom=20mm
+    mainfont: Times New Roman
+    documentclass: article
+    classoption: [11pt]
+    keep-tex: false
+bibliography: ../references.bib
+---
+
+# The Text Analysis Framework Includes:
+
+- Medical Terminology Analysis: How models use cardiac-specific language
+- Complexity-Quality Correlations: Relationship between readability and expert ratings
+- Communication Style Patterns: Patient-centered language features
+- Topic Modeling: Content themes across responses
+- Model Linguistic Signatures: Distinctive textual characteristics
+
+```{r}
+#| label: setup-text-analysis
+
+library(tidyverse)
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.textmodels)
+library(quanteda.textplots)
+library(quanteda.sentiment)
+library(knitr)
+library(kableExtra)
+library(gt)
+library(ggplot2)
+library(patchwork)
+library(viridis)
+library(corrplot)
+library(topicmodels)
+# library(ldatuning)
+library(ggrepel)
+library(stringr)
+
+# Set global options
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 8,
+  dpi = 300
+)
+
+# Set theme for all plots
+theme_set(
+  theme_minimal(base_size = 16) +
+    theme(
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(size = 18, face = "bold"),
+      axis.title = element_text(size = 16),
+      legend.position = "bottom"
+    )
+)
+
+# Define color palettes (consistent with stats analysis)
+brand_colors <- list(
+  primary_navy = "#2C4B73",
+  accent_yellow = "#F4C430",
+  supporting_blue = "#7BA7BC",
+  light_gray = "#E8E8E8",
+  white = "#FFFFFF",
+  alert_red = "#D73027",
+  success_green = "#1A9850"
+)
+
+# AI company brand colors
+ai_colors <- c(
+  "openai" = "#17A683",
+  "google" = "#528DD5",
+  "deepseek" = "#5370FE",
+  "perplexity" = "#278491",
+  "anthropic" = "#D5A583",
+  "xai" = "#000000"
+)
+```
+
+```{r}
+#| label: load-text-data
+
+# Load the processed data from the main analysis
+df <- read_csv(
+  "./data/data_preparation/individual_ratings_20250606_115527.csv",
+  show_col_types = FALSE
+)
+
+# Create unique responses dataset
+unique_responses <- df %>%
+  distinct(index, model, category, question, response) %>%
+  mutate(
+    category = factor(
+      category,
+      levels = c(
+        "Disease Understanding and Diagnosis",
+        "Treatment and Management",
+        "Lifestyle & Daily Activity"
+      )
+    ),
+    model = factor(model)
+  )
+
+# Add average ratings to unique responses
+response_ratings <- df %>%
+  group_by(index, model) %>%
+  summarise(
+    mean_rating = mean(c_across(Appropriateness:`Tone/Empathy`), na.rm = TRUE),
+    rating_sd = sd(c_across(Appropriateness:`Tone/Empathy`), na.rm = TRUE),
+    n_ratings = n(),
+    .groups = "drop"
+  )
+
+unique_responses <- unique_responses %>%
+  left_join(response_ratings, by = c("index", "model"))
+
+# Load questions for context
+# questions <- read_csv("./data/questions/FAQ_HF_CMP_Patient_20250519.csv", show_col_types = FALSE)
+```
+
+# Abstract
+
+**Background**: Large language models (LLMs) are increasingly used to generate patient-facing medical information, but little is known about the linguistic features that distinguish high-quality from low-quality responses in cardiology contexts.
+
+**Objective**: To identify linguistic and content characteristics that distinguish high-quality AI-generated responses to heart failure and cardiomyopathy patient questions across six major LLM platforms.
+
+**Methods**: We analyzed 300 AI-generated responses (50 patient questions × 6 LLM models) using computational text analysis. Responses were evaluated by human experts and auto-graders across nine quality dimensions. We applied quanteda-based text mining to examine: (1) medical terminology usage patterns, (2) linguistic complexity metrics, (3) topic modeling of content themes, (4) patient-centered communication features, and (5) sentiment and empathy markers.
+
+**Results**: [To be completed]
+
+**Conclusions**: [To be completed]
+
+**Keywords**: artificial intelligence, cardiology, text mining, patient communication, large language models
+
+# Introduction
+
+The rapid adoption of large language models (LLMs) in healthcare settings has created new opportunities for patient education and communication. However, the linguistic characteristics that make AI-generated medical content effective remain poorly understood, particularly in specialized domains like cardiology.
+
+Previous research has focused primarily on accuracy and clinical appropriateness of AI responses, with limited attention to the textual features that influence patient comprehension and engagement. Understanding these linguistic patterns is crucial for optimizing AI systems for patient-facing applications.
+
+This study addresses this gap by conducting a comprehensive text mining analysis of AI-generated responses to common heart failure and cardiomyopathy patient questions, examining how linguistic features correlate with expert-rated quality across multiple dimensions.
+
+# Methods
+
+## Dataset Description
+
+Our analysis utilized responses from six major LLM platforms (OpenAI, Google, Anthropic, DeepSeek, Perplexity, XAI) to 50 frequently asked questions about heart failure and cardiomyopathy. Each response was evaluated by human experts and automated graders across nine quality dimensions.
+
+## Text Preprocessing
+
+```{r}
+#| label: create-corpus-and-preprocess
+
+# Create corpus from unique responses
+response_corpus <- corpus(
+  unique_responses$response,
+  docvars = unique_responses %>%
+    select(model, category, index, mean_rating)
+)
+
+# Basic text cleaning function
+clean_medical_text <- function(text) {
+  text %>%
+    # Remove markdown formatting
+    str_replace_all("\\*\\*(.*?)\\*\\*", "\\1") %>%
+    str_replace_all("###\\s*", "") %>%
+    str_replace_all("#\\s*", "") %>%
+    # Standardize medical abbreviations
+    str_replace_all("\\bHF\\b", "heart failure") %>%
+    str_replace_all(
+      "\\bHFpEF\\b",
+      "heart failure with preserved ejection fraction"
+    ) %>%
+    str_replace_all(
+      "\\bHFrEF\\b",
+      "heart failure with reduced ejection fraction"
+    ) %>%
+    # Clean up whitespace
+    str_replace_all("\\s+", " ") %>%
+    str_trim()
+}
+
+# Apply cleaning to corpus
+cleaned_texts <- clean_medical_text(as.character(response_corpus))
+
+# Recreate corpus with cleaned texts and original docvars
+response_corpus <- corpus(
+  cleaned_texts,
+  docvars = unique_responses %>%
+    select(model, category, index, mean_rating)
+)
+
+# Tokenization with medical terms preservation
+response_tokens <- tokens(
+  response_corpus,
+  remove_punct = TRUE,
+  remove_numbers = FALSE,
+  remove_symbols = TRUE,
+  remove_url = TRUE
+) %>%
+  tokens_tolower() %>%
+  tokens_remove(stopwords("en"))
+
+# Create document-feature matrix
+response_dfm <- dfm(response_tokens)
+
+cat(
+  "Corpus created with",
+  ndoc(response_corpus),
+  "documents and",
+  nfeat(response_dfm),
+  "unique features\n"
+)
+
+# compute sparsity
+# total number of cells in the DFM
+total_cells <- ndoc(response_dfm) * nfeat(response_dfm)
+
+# number of non-zero entries
+non_zero_cells <- length(response_dfm@x)
+
+# Sparsity calculation
+sparsity <- 1 - (non_zero_cells / total_cells)
+sparsity_percent <- sparsity * 100
+```
+
+**Summary:**
+
+- `r ndoc(response_corpus)` documents
+- `r nfeat(response_dfm)` features: unique words remaining after cleaning/tokenization.
+- `r round(sparsity_percent, 2)`% sparsity: most entries in the matrix are zeros — typical for text data
+
+
+## Medical Terminology Dictionary
+
+```{r}
+#| label: create-medical-dictionaries
+
+# Create comprehensive cardiac terminology dictionary
+cardiac_dict <- dictionary(list(
+  # Anatomy and physiology
+  cardiac_anatomy = c(
+    "heart",
+    "cardiac",
+    "ventricle*",
+    "atri*",
+    "myocardi*",
+    "valve*",
+    "aorta*",
+    "pulmonary",
+    "chamber*"
+  ),
+
+  # Conditions and diagnoses
+  heart_failure = c("heart failure", "hf", "cardiac failure", "congestive"),
+  cardiomyopathy = c(
+    "cardiomyopath*",
+    "dilated",
+    "hypertrophic",
+    "restrictive"
+  ),
+  arrhythmia = c("arrhythmi*", "fibrillation", "tachycardia", "bradycardia"),
+
+  # Symptoms
+  symptoms = c(
+    "dyspnea",
+    "shortness of breath",
+    "edema",
+    "swelling",
+    "fatigue",
+    "chest pain",
+    "palpitation*",
+    "orthopnea"
+  ),
+
+  # Treatments and medications
+  medications = c(
+    "beta blocker*",
+    "ace inhibitor*",
+    "arb",
+    "diuretic*",
+    "digoxin",
+    "statin*",
+    "anticoagulant*"
+  ),
+  devices = c("pacemaker*", "defibrillator*", "icd", "crt", "device*"),
+  procedures = c("catheterization", "angioplasty", "bypass", "transplant*"),
+
+  # Lifestyle and management
+  lifestyle = c(
+    "exercise",
+    "diet",
+    "sodium",
+    "salt",
+    "weight",
+    "fluid*",
+    "activity",
+    "rest"
+  ),
+  monitoring = c("monitor*", "follow-up", "appointment*", "test*", "echo*")
+))
+
+# Patient communication dictionary
+communication_dict <- dictionary(list(
+  # Personalization
+  personalization = c("you", "your", "yourself"),
+
+  # Reassurance and support
+  reassurance = c(
+    "reassur*",
+    "comfort*",
+    "support*",
+    "help*",
+    "improv*",
+    "manag*",
+    "control*",
+    "better"
+  ),
+
+  # Directive language
+  directive = c(
+    "should",
+    "must",
+    "need to",
+    "important to",
+    "recommend*",
+    "advise*",
+    "suggest*"
+  ),
+
+  # Uncertainty and hedging
+  uncertainty = c(
+    "may",
+    "might",
+    "could",
+    "possible",
+    "sometimes",
+    "unclear",
+    "uncertain",
+    "varies"
+  ),
+
+  # Empathy markers
+  empathy = c(
+    "understand",
+    "know",
+    "feel*",
+    "experience",
+    "concern*",
+    "worry",
+    "difficult",
+    "challenging"
+  )
+))
+
+# Apply dictionaries to corpus
+cardiac_features <- dfm_lookup(response_dfm, cardiac_dict)
+communication_features <- dfm_lookup(response_dfm, communication_dict)
+
+# Convert to data frames for analysis
+cardiac_df <- convert(cardiac_features, to = "data.frame") %>%
+  bind_cols(docvars(response_corpus))
+
+communication_df <- convert(communication_features, to = "data.frame") %>%
+  bind_cols(docvars(response_corpus))
+
+# Debug: check column names
+cat("Cardiac DF columns:", paste(names(cardiac_df), collapse = ", "), "\n")
+```
+
+# Results
+
+## Medical Terminology Usage Patterns
+
+```{r}
+#| label: analyze-medical-terminology
+
+# Calculate terminology density by model
+terminology_by_model <- cardiac_df %>%
+  group_by(model) %>%
+  summarise(
+    across(cardiac_anatomy:monitoring, mean, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    total_terms = sum(c_across(cardiac_anatomy:monitoring), na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  arrange(desc(total_terms))
+
+# Visualization of terminology usage
+terminology_long <- terminology_by_model %>%
+  select(-total_terms) %>%
+  pivot_longer(
+    cols = cardiac_anatomy:monitoring,
+    names_to = "category",
+    values_to = "frequency"
+  ) %>%
+  mutate(
+    category = str_replace_all(category, "_", " ") %>% str_to_title(),
+    # model = tools::toTitleCase(model)
+  )
+
+p_terminology <- ggplot(
+  terminology_long,
+  aes(x = category, y = frequency, fill = model)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = ai_colors) +
+  labs(
+    title = "Medical Terminology Usage by Model",
+    subtitle = "Average frequency of cardiac terminology categories per response",
+    x = "Terminology Category",
+    y = "Average Frequency",
+    fill = "Model"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+print(p_terminology)
+```
+
+## Linguistic Complexity and Quality Correlation
+
+```{r}
+#| label: analyze-linguistic-complexity
+
+# Calculate detailed readability metrics
+readability_detailed <- textstat_readability(
+  response_corpus,
+  measure = c(
+    "Flesch",
+    "Flesch.Kincaid",
+    "FOG",
+    "SMOG",
+    "Coleman.Liau.short",
+    "ARI"
+  )
+) %>%
+  as_tibble() %>%
+  bind_cols(docvars(response_corpus))
+
+# Lexical diversity metrics
+lexical_diversity <- textstat_lexdiv(response_dfm) %>%
+  as_tibble() %>%
+  bind_cols(docvars(response_corpus))
+
+# Combine complexity metrics
+complexity_combined <- readability_detailed %>%
+  left_join(
+    lexical_diversity,
+    by = c("document", "model", "category", "index", "mean_rating")
+  )
+
+# Correlation with quality ratings
+complexity_correlations <- complexity_combined %>%
+  group_by(model) %>%
+  summarise(
+    flesch_rating_cor = cor(Flesch, mean_rating, use = "complete.obs"),
+    fog_rating_cor = cor(FOG, mean_rating, use = "complete.obs"),
+    lexdiv_rating_cor = cor(TTR, mean_rating, use = "complete.obs"),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: lm-plot-fkg-mean-rating-overall
+
+# Calculate correlation coefficient
+corr_value <- cor(complexity_combined$Flesch.Kincaid, complexity_combined$mean_rating, use = "complete.obs")
+lm_model <- lm(mean_rating ~ Flesch.Kincaid, data = complexity_combined)
+r_squared <- summary(lm_model)$r.squared
+
+broom::tidy(lm_model, conf.int = TRUE, conf.level = 0.95)
+broom::glance(lm_model)
+
+p_complexity_quality <- complexity_combined %>%
+  ggplot(aes(x = Flesch.Kincaid, y = mean_rating)) +
+  geom_point(alpha = 0.7, size = 3, color = brand_colors$primary_navy, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE, color = brand_colors$alert_red) +
+  annotate("text",
+    x = max(complexity_combined$Flesch.Kincaid, na.rm = TRUE) * 0.8,
+    y = min(complexity_combined$mean_rating, na.rm = TRUE) + 0.5,
+    label = paste("r =", round(corr_value, 3), "\nR² =", round(r_squared, 3)),
+    hjust = 0, size = 4.5, color = brand_colors$primary_navy
+  ) +
+  labs(
+    title = "Reading Level vs. Quality Rating",
+    x = "Flesch-Kincaid Grade Level",
+    y = "Mean Quality Rating"
+  )
+
+print(p_complexity_quality)
+```
+
+**Interpretation:**
+
+| Aspect                       | Observation                                                                |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| **Visual Trend**             | Slight downward slope — harder texts *seem* to get lower ratings           |
+| **Statistical Significance** | Yes (p = 0.000153), so the slope is reliably non-zero                      |
+| **Effect Size**              | Very small — quality drops \~0.005 per grade level                         |
+| **Practical Impact**         | **Minimal** — a 20-point increase in reading level lowers quality by \~0.1 |
+| **R² Value**                 | Very low — 95% of quality variation is explained by other factors          |
+
+
+```{r}
+#| label: lm-plot-fkg-mean-rating-stratified
+
+p_complexity_quality <- complexity_combined %>%
+  ggplot(aes(x = Flesch.Kincaid, y = mean_rating, color = model)) +
+  geom_point(alpha = 0.7, size = 3, shape = 16) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_manual(values = ai_colors) +
+  facet_wrap(~ tools::toTitleCase(model), scales = "free_x") +
+  labs(
+    title = "Reading Level vs. Quality Rating by Model",
+    x = "Flesch-Kincaid Grade Level",
+    y = "Mean Quality Rating",
+    color = "Model"
+  ) +
+  theme(legend.position = "none")
+
+print(p_complexity_quality)
+```
+
+## Communication Style Analysis
+
+```{r}
+#| label: analyze-communication-patterns
+
+# Communication patterns by model and quality
+communication_quality <- communication_df %>%
+  mutate(
+    quality_tier = case_when(
+      mean_rating >= 4.5 ~ "Best Quality",
+      mean_rating >= 4.0 ~ "Good Quality",
+      mean_rating >= 3.0 ~ "Fair Quality",
+      TRUE ~ "Low Quality"
+    )
+  )
+
+# Compare communication features across quality tiers
+comm_by_quality <- communication_quality %>%
+  group_by(quality_tier) %>%
+  summarise(
+    across(personalization:empathy, mean, na.rm = TRUE),
+    n_responses = n(),
+    .groups = "drop"
+  )
+
+# Visualization of communication patterns
+comm_long <- comm_by_quality %>%
+  select(-n_responses) %>%
+  pivot_longer(
+    cols = personalization:empathy,
+    names_to = "feature",
+    values_to = "frequency"
+  ) %>%
+  mutate(feature = str_to_title(feature))
+
+p_communication <- ggplot(
+  comm_long,
+  aes(x = feature, y = frequency, fill = quality_tier)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(
+    values = c(
+      "Best Quality" = brand_colors$success_green,
+      "Good Quality" = brand_colors$supporting_blue,
+      "Fair Quality" = brand_colors$accent_yellow,
+      "Low Quality" = brand_colors$alert_red
+    )
+  ) +
+  labs(
+    title = "Communication Features by Quality Tier",
+    subtitle = "Average frequency of communication markers per response",
+    x = "Communication Feature",
+    y = "Average Frequency",
+    fill = "Quality Tier"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+print(p_communication)
+```
+
+The above plot shows the distribution of communication features across different quality tiers of AI responses. It reveals how linguistic elements like personalization, reassurance, directive language, uncertainty markers, and empathy vary between responses rated as "Best Quality," "Good Quality," "Fair Quality," and "Low Quality." 
+
+## Topic Modeling Analysis
+
+Not specifically needed since we already know categories from questions (LDA for categorization). LDA typically used to uncover unknown structure or themes which is not relevant here since prompts are known and structured.
+
+But we might want it to:
+
+* Check whether model outputs align with those categories
+* Explore content emphasis beyond surface-level topic
+* Detect divergence between question intent and model response
+
+```{r}
+#| label: perform-topic-modeling
+
+# Prepare DFM for topic modeling
+cat("Original DFM dimensions:", dim(response_dfm), "\n")
+
+# Examine feature frequencies to understand the distribution
+feature_freq <- colSums(response_dfm)
+cat("Feature frequency summary:\n")
+print(summary(feature_freq))
+
+# Check document frequency (number of documents containing each term)
+doc_freq <- docfreq(response_dfm)
+cat("Document frequency summary:\n")
+print(summary(doc_freq))
+
+# Let's use a much more conservative approach for trimming
+# Remove only very rare terms (appearing in only 1 document) and very common terms
+response_dfm_trimmed <- dfm_trim(
+  response_dfm,
+  min_docfreq = 2, # Terms must appear in at least 2 documents
+  max_docfreq = 290 # Terms can appear in up to 290 out of 300 documents (97%)
+)
+
+cat("Trimmed DFM dimensions:", dim(response_dfm_trimmed), "\n")
+
+# If still empty, try even more permissive settings
+if (nfeat(response_dfm_trimmed) == 0) {
+  cat("Still no features. Trying with absolute minimal trimming...\n")
+  response_dfm_trimmed <- dfm_trim(
+    response_dfm,
+    min_docfreq = 1, # Keep all terms
+    max_docfreq = 299 # Remove only terms in 99.7% of documents
+  )
+  cat("Minimal trimmed DFM dimensions:", dim(response_dfm_trimmed), "\n")
+}
+
+# If STILL empty, use the original DFM
+if (nfeat(response_dfm_trimmed) == 0) {
+  cat("Trimming removes all features. Using original DFM...\n")
+  response_dfm_trimmed <- response_dfm
+  cat("Using original DFM dimensions:", dim(response_dfm_trimmed), "\n")
+}
+
+# Convert to topicmodels format
+dtm <- convert(response_dfm_trimmed, to = "topicmodels")
+cat("DTM dimensions:", dim(dtm), "\n")
+
+# Check if DTM is valid for topic modeling
+if (nrow(dtm) == 0 || ncol(dtm) == 0) {
+  stop("Document-term matrix is empty. Cannot proceed with topic modeling.")
+}
+
+# Determine optimal number of topics (simplified for demonstration)
+set.seed(123)
+topic_model <- LDA(dtm, k = 8, control = list(seed = 123))
+
+# Extract topics and terms
+topics_terms <- terms(topic_model, 10)
+topics_gamma <- posterior(topic_model)$topics
+
+cat("Topics gamma dimensions:", dim(topics_gamma), "\n")
+cat("Number of documents in corpus:", ndoc(response_corpus), "\n")
+
+# Check if topic modeling was successful
+if (is.null(topics_gamma) || nrow(topics_gamma) == 0) {
+  stop("Topic modeling failed - no topic assignments generated.")
+}
+
+# inspect with gpt: topic numbers aren’t meaningful — label by inspecting the terms
+# terms(topic_model, 10)
+
+# Create topic labels (manual interpretation)
+topic_labels <- c(
+  "Heart Failure Management", # Topic 1
+  "HCM & Lifestyle Considerations", # Topic 2
+  "Medication Therapy", # Topic 3
+  "Risk & Diagnosis", # Topic 4
+  "Cardiomyopathy Types & Causes", # Topic 5
+  "Symptom Management & Monitoring", # Topic 6
+  "Dilated Cardiomyopathy & Life Impact", # Topic 7
+  "Genetics & Family Risk" # Topic 8
+)
+
+# Assign dominant topic to each document
+dominant_topics <- apply(topics_gamma, 1, which.max)
+
+# Ensure we have the right number of documents
+if (nrow(topics_gamma) != ndoc(response_corpus)) {
+  warning("Mismatch between topic model results and corpus size. Using available data.")
+}
+
+topic_assignments <- data.frame(
+  document = paste0("doc_", 1:nrow(topics_gamma)),
+  dominant_topic = topic_labels[dominant_topics],
+  topic_probability = apply(topics_gamma, 1, max)
+)
+
+# Only bind with docvars if dimensions match
+if (nrow(topic_assignments) == ndoc(response_corpus)) {
+  topic_assignments <- topic_assignments %>%
+    bind_cols(docvars(response_corpus))
+} else {
+  # If dimensions don't match, we need to subset docvars to match
+  # This can happen if some documents were removed during preprocessing
+  corpus_vars <- docvars(response_corpus)
+  if (nrow(topics_gamma) <= nrow(corpus_vars)) {
+    topic_assignments <- topic_assignments %>%
+      bind_cols(corpus_vars[1:nrow(topics_gamma), ])
+  } else {
+    warning("Cannot bind document variables - dimension mismatch")
+  }
+}
+
+# Topic distribution by model
+topic_by_model <- topic_assignments %>%
+  count(model, dominant_topic) %>%
+  group_by(model) %>%
+  mutate(
+    proportion = n / sum(n),
+    # model = tools::toTitleCase(model)
+  )
+
+# Visualization
+p_topics <- ggplot(
+  topic_by_model,
+  aes(x = dominant_topic, y = proportion, fill = model)
+) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  scale_fill_manual(values = ai_colors) +
+  labs(
+    title = "Topic Distribution by Model",
+    subtitle = "Proportion of responses addressing different content themes",
+    x = "Topic",
+    y = "Proportion of Responses",
+    fill = "Model"
+  ) +
+  theme(
+    # axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+print(p_topics)
+```
+
+This analysis shows how different language models emphasize different content themes in their responses, as discovered via topic modeling. Each bar shows the proportion of responses from a specific model that are most associated with one of eight content-based topics (determined by LDA topic modeling).
+
+- Do the model responses align with the intent of the original question? 
+- Capture the dominant focus of a free-form response. Even if the prompt is on "Lifestyle", a response might emphasize "Genetics" more.
+-  Compare how models differ in what they emphasize — even for the same prompt. Even if the prompt is identical across models, some might focus more on risk, others on treatment, etc.
+
+## Model-Specific Linguistic Signatures
+
+```{r}
+#| label: identify-model-signatures
+
+# Key terms by model using keyness analysis
+model_keyness <- list()
+
+for (model_name in unique(unique_responses$model)) {
+  target_dfm <- dfm_subset(response_dfm, model == model_name)
+  reference_dfm <- dfm_subset(response_dfm, model != model_name)
+
+  keyness_result <- textstat_keyness(
+    rbind(target_dfm, reference_dfm),
+    target = 1:ndoc(target_dfm)
+  )
+
+  model_keyness[[model_name]] <- keyness_result %>%
+    as_tibble() %>%
+    slice_head(n = 10) %>%
+    mutate(model = model_name)
+}
+
+# Combine keyness results
+all_keyness <- bind_rows(model_keyness)
+
+# Visualization of distinctive terms
+p_keyness <- all_keyness %>%
+  # mutate(model = tools::toTitleCase(model)) %>%
+  ggplot(aes(
+    x = reorder(feature, chi2),
+    y = chi2,
+    fill = model
+  )) +
+  geom_col() +
+  scale_fill_manual(values = ai_colors) +
+  facet_wrap(~model, scales = "free") +
+  coord_flip() +
+  labs(
+    title = "Distinctive Terms by Model",
+    subtitle = "Top 10 terms with highest keyness scores",
+    x = "Terms",
+    y = "Keyness (χ²)",
+    fill = "Model"
+  ) +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(size = 10)
+  )
+
+print(p_keyness)
+```
+
+## Wordcloud Visualization
+
+```{r}
+#| label: create-wordclouds
+
+# Create wordcloud for overall corpus
+dfmat_wordcloud <- response_dfm_trimmed
+
+# Generate overall wordcloud
+set.seed(123)
+textplot_wordcloud(dfmat_wordcloud,
+  max_words = 100,
+  color = c(
+    brand_colors$primary_navy,
+    brand_colors$supporting_blue,
+    brand_colors$accent_yellow,
+    brand_colors$alert_red
+  )
+)
+
+# Create model-specific wordclouds
+models <- unique(unique_responses$model)
+
+# Function to create wordcloud for each model
+create_model_wordcloud <- function(model_name) {
+  model_dfm <- dfm_subset(response_dfm_trimmed, model == model_name)
+
+  if (nfeat(model_dfm) > 0) {
+    set.seed(123)
+    textplot_wordcloud(model_dfm,
+      max_words = 50,
+      color = c(
+        ai_colors[model_name],
+        brand_colors$supporting_blue,
+        brand_colors$light_gray
+      )
+    )
+    title(main = tools::toTitleCase(model_name), line = -1)
+  }
+}
+
+# Create a list to store all plots
+wordcloud_plots <- list()
+
+# Generate wordclouds for each model
+for (i in seq_along(models)) {
+  model <- models[i]
+  wordcloud_plots[[i]] <- create_model_wordcloud(model)
+}
+```
+
+## Document Scaling Analysis
+
+1. Defined reference scores using top 25% (high) and bottom 25% (low) of quality ratings.
+2. Trained a Wordscores model on a trimmed DFM (Document-Feature Matrix).
+3. Highlighted medical terms to visualize their position on the quality spectrum.
+4. Predicted document scores, compared with actual ratings, and visualized:
+  - Overall performance
+  - Performance by model
+  - Performance by question category
+
+### Word Positions: Quality Scaling Analysis
+
+```{r}
+#| label: perform-quality-scaling-analysis
+
+# Create quality-based reference scores for Wordscores
+# Use quality ratings as reference scores
+quality_scores <- docvars(response_corpus)$mean_rating
+
+# Create binary high/low quality reference for clearer interpretation
+high_quality_threshold <- quantile(quality_scores, 0.75, na.rm = TRUE)
+low_quality_threshold <- quantile(quality_scores, 0.25, na.rm = TRUE)
+
+# Set reference scores: 1 for high quality, -1 for low quality, NA for middle
+refscores <- ifelse(quality_scores >= high_quality_threshold, 1,
+  ifelse(quality_scores <= low_quality_threshold, -1, NA)
+)
+
+cat("Reference scores distribution:\n")
+cat("High quality (score = 1):", sum(refscores == 1, na.rm = TRUE), "\n")
+cat("Low quality (score = -1):", sum(refscores == -1, na.rm = TRUE), "\n")
+cat("Middle quality (NA):", sum(is.na(refscores)), "\n")
+
+# Fit Wordscores model
+tmod_ws <- textmodel_wordscores(response_dfm_trimmed, y = refscores, smooth = 1)
+
+# Identify key medical terms to highlight
+medical_highlight_terms <- c(
+  "heart", "failure", "cardiomyopathy", "patient",
+  "treatment", "symptoms", "medication", "exercise",
+  "doctor", "condition", "risk", "management"
+)
+
+# Plot word positions along quality dimension
+textplot_scale1d(tmod_ws,
+  highlighted = medical_highlight_terms,
+  highlighted_color = brand_colors$alert_red,
+  alpha = 0.7
+) +
+  labs(
+    title = "Word Positions: Quality Scaling Analysis",
+    subtitle = "Medical terms highlighted in red",
+    x = "Estimated Quality Position",
+    y = "Log Term Frequency"
+  ) +
+  theme_minimal()
+```
+
+* Words are mapped in a 2D space:
+  * **X-axis:** Estimated position on the "quality" dimension.
+  * **Y-axis:** Log-transformed term frequency (how often the word appears).
+* **Medical terms** (e.g., “heart”, “treatment”, “failure”) are highlighted in **red**.
+
+**Interpretation:**
+
+* Words like **"heart", "failure", "doctor", and "treatment"** are positioned to the far right, suggesting they are associated with **higher-quality answers**.
+* Conversely, more neutral or frequent filler words cluster near the center.
+* The position of medical words shows their contribution to **perceived answer quality**, with more specific and relevant terms aligned with higher quality.
+
+---
+
+### Document Scaling Validation
+
+
+* A scatter plot of **predicted quality scores** (from Wordscores) vs. **actual human ratings** of answer quality.
+
+
+```{r}	
+#| label: predict-document-scores
+
+pred_scores <- predict(tmod_ws,
+  newdata = response_dfm_trimmed,
+  se.fit = TRUE
+)
+
+# Create data frame with predictions and document variables
+scaling_results <- data.frame(
+  predicted_quality = as.numeric(pred_scores$fit),
+  se = as.numeric(pred_scores$se.fit),
+  actual_quality = quality_scores,
+  model = docvars(response_corpus)$model,
+  category = docvars(response_corpus)$category
+) %>%
+  filter(!is.na(predicted_quality))
+
+# Correlation between predicted and actual quality
+quality_correlation <- cor(scaling_results$predicted_quality,
+  scaling_results$actual_quality,
+  use = "complete.obs"
+)
+
+cat(
+  "\nCorrelation between predicted and actual quality:",
+  round(quality_correlation, 3), "\n"
+)
+
+# Plot predicted vs actual quality
+p_scaling_validation <- ggplot(
+  scaling_results,
+  aes(x = predicted_quality, y = actual_quality)
+) +
+  geom_point(alpha = 0.6, color = brand_colors$primary_navy) +
+  geom_smooth(method = "lm", se = TRUE, color = brand_colors$alert_red) +
+  annotate("text",
+    x = min(scaling_results$predicted_quality, na.rm = TRUE) + 0.1,
+    y = max(scaling_results$actual_quality, na.rm = TRUE) - 0.2,
+    label = paste("r =", round(quality_correlation, 3)),
+    hjust = 0, size = 4.5, color = brand_colors$primary_navy
+  ) +
+  labs(
+    title = "Document Scaling Validation",
+    subtitle = "Predicted vs. actual quality ratings",
+    x = "Predicted Quality (Wordscores)",
+    y = "Actual Quality Rating"
+  ) +
+  theme_minimal()
+
+print(p_scaling_validation)
+```
+
+**Interpretation:**
+
+* There’s a **moderate positive correlation (r = 0.448)** between predicted and actual quality.
+* This suggests that the Wordscores model does a **reasonably good job at estimating perceived quality** from word use alone.
+
+
+---
+
+### **3. Quality Prediction Performance by Model**
+
+
+* A bar chart ranking models by their **correlation between Wordscores-predicted quality and actual quality**.
+
+```{r}	
+#| label: model-specific-scaling-performance
+
+scaling_by_model <- scaling_results %>%
+  group_by(model) %>%
+  summarise(
+    correlation = cor(predicted_quality, actual_quality, use = "complete.obs"),
+    mean_predicted = mean(predicted_quality, na.rm = TRUE),
+    mean_actual = mean(actual_quality, na.rm = TRUE),
+    n_docs = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(correlation))
+
+# Visualize model-specific scaling performance
+p_model_scaling <- ggplot(
+  scaling_by_model,
+  aes(
+    x = reorder(model, correlation),
+    y = correlation,
+    fill = model
+  )
+) +
+  geom_col() +
+  scale_fill_manual(values = ai_colors) +
+  coord_flip() +
+  labs(
+    title = "Quality Prediction Performance by Model",
+    subtitle = "Correlation between Wordscores and actual ratings",
+    x = "Model",
+    y = "Correlation with Actual Quality",
+    fill = "Model"
+  ) +
+  theme(legend.position = "none")
+
+print(p_model_scaling)
+```
+
+**Interpretation:**
+
+* **Top performers:** `deepseek` and `perplexity` show the highest correlations, meaning their answers align best with the kind of language associated with high-quality answers.
+* **Middle tier:** `openai`, `xal`, `anthropic` show decent but lower performance.
+* **Low performer:** `google` shows the weakest alignment between its word choices and human-perceived quality.
+
+---
+
+
+### Quality Scaling by Question Category
+
+* Separate panels for each question category
+* Plots **predicted quality vs. actual quality** with trend lines.
+
+```{r}	
+#| label: category-specific-scaling-performance
+
+p_category_scaling <- ggplot(
+  scaling_results,
+  aes(
+    x = predicted_quality, y = actual_quality,
+    color = category
+  )
+) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~category) +
+  labs(
+    title = "Quality Scaling by Question Category",
+    x = "Predicted Quality (Wordscores)",
+    y = "Actual Quality Rating",
+    color = "Category"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p_category_scaling)
+```
+
+**Interpretation:**
+
+* **Treatment and Management** shows the strongest positive slope — predictions align best here.
+* **Lifestyle & Daily Activity** also shows a clear positive trend.
+* **Disease Understanding and Diagnosis** shows the weakest alignment, suggesting that **predicting quality here is more difficult** (possibly due to less variation in language or greater complexity).
+
+---
+
