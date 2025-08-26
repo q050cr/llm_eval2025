@@ -1,7 +1,7 @@
 ---
 title: "LLM Performance in Clinical Question Answering: Results"
 author: "Christoph Reich"
-date: "`r Sys.Date()`"
+date: today
 format:
   html:
     toc: true
@@ -12,6 +12,7 @@ format:
     #code-tools: true
     #code-summary: "Show the code"
     theme: cosmo
+    embed-resources: true
     fig-width: 10
     fig-height: 8
   pdf:
@@ -30,6 +31,12 @@ format:
     documentclass: report 
     classoption: [11pt] # Font size
     keep-tex: false # Keep the intermediate .tex file for debugging
+execute:
+  echo: false
+  warning: false
+  message: false
+  fig-format: png   # optional, png/svg/pdf
+  fig-dpi: 300
 ---
 
 ```{r, include=FALSE}
@@ -64,6 +71,7 @@ knitr::opts_chunk$set(
   # echo = TRUE,
   warning = FALSE,
   message = FALSE,
+  fig.path = "../figures/stats_analysis_qmd/", # quarto stored
   fig.width = 10,
   fig.height = 8,
   dpi = 300
@@ -92,13 +100,33 @@ brand_colors <- list(
 )
 
 # AI company brand colors
-ai_colors <- c(
+ai_colors_old <- c(
   "openai" = "#17A683",
   "google" = "#528DD5",
   "deepseek" = "#5370FE",
   "perplexity" = "#278491",
   "anthropic" = "#D5A583",
   "xai" = "#000000"
+)
+
+# enhanced contrast
+ai_colors <- c(
+  "openai" = "#4B8B3B",
+  "google" = "#E76F51",
+  "deepseek" = "#3A86FF",
+  "perplexity" = "#1D5F6B",
+  "anthropic" = "#D5A583",
+  "xai" = "#666666"
+)
+
+# Define color mapping with correct capitalization
+ai_colors_capital <- c(
+  "Openai" = "#4B8B3B",
+  "Google" = "#E76F51",
+  "Deepseek" = "#3A86FF",
+  "Perplexity" = "#1D5F6B",
+  "Anthropic" = "#D5A583",
+  "Xai" = "#666666"
 )
 
 # Define rater groups
@@ -364,6 +392,7 @@ readability_scores <- unique_responses %>%
 
 ```{r}
 #| label: Readability-per-model
+#| tbl-cap: "Readability Metrics by Model"
 
 read_by_model <- readability_scores %>%
   group_by(model) %>%
@@ -403,7 +432,7 @@ readability_per_model_gt <- read_by_model %>%
     model = tools::toTitleCase(model)
   ) %>%
   gt() %>%
-  tab_header(title = "Table 1: Readability Metrics by Model") %>%
+  # tab_header(title = "Readability Metrics by Model") %>%
   fmt_missing(missing_text = "-")
 
 readability_per_model_gt
@@ -426,10 +455,12 @@ ggplot(readability_scores, aes(x = Flesch.Kincaid, fill = model)) +
 #| label: violin-plot-flesch-model
 #| message: false
 #| warning: false
+#| fig-width: 7
+#| fig-height: 5
 
 p <- readability_scores %>%
   ggplot(
-    aes(x = model, y = Flesch.Kincaid, fill = model)
+    aes(x = reorder(tools::toTitleCase(model), Flesch.Kincaid), y = Flesch.Kincaid, fill = model)
   ) +
   geom_violin(trim = FALSE, alpha = 0.6) +
   geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
@@ -448,8 +479,8 @@ p <- readability_scores %>%
   ) +
   annotate(
     "text",
-    x = 5.5,
-    y = mean(readability_scores$Flesch.Kincaid, na.rm = TRUE) + 10,
+    x = 1.0,
+    y = mean(readability_scores$Flesch.Kincaid, na.rm = TRUE) + 5,
     label = sprintf(
       "Mean: %.2f",
       mean(readability_scores$Flesch.Kincaid, na.rm = TRUE)
@@ -459,14 +490,14 @@ p <- readability_scores %>%
     hjust = 0
   ) +
   labs(
-    title = "Flesch Reading Ease by Model",
-    subtitle = "Violin + individual scores + mean",
+    title = NULL,
+    subtitle = NULL,
     x = NULL,
     y = "Flesch Reading Ease"
   ) +
   scale_fill_manual(values = ai_colors) +
-  coord_flip() +
-  theme_minimal(base_size = 16) +
+  # coord_flip() +
+  # theme_minimal(base_size = 16) +
   theme(
     # axis.text.x      = element_text(angle = 45, hjust = 1),
     # panel.grid.minor = element_blank(),
@@ -476,14 +507,14 @@ p <- readability_scores %>%
 p
 
 ggsave(
-  "figures/flesch_model_violin_plot.svg",
+  "figures/readability/flesch_model_violin_plot.svg",
   p,
   width = 7,
   height = 5
 )
 
 ggsave(
-  "figures/flesch_model_violin_plot.pdf",
+  "figures/readability/flesch_model_violin_plot.pdf",
   p,
   width = 7,
   height = 5
@@ -498,16 +529,6 @@ readability_data <- data.frame(
   model = c("Anthropic", "Deepseek", "Google", "Openai", "Perplexity", "Xai"),
   flesch_kg_mean = c(35.2, 14.6, 11.9, 15.0, 21.1, 14.4),
   flesch_kg_sd = c(20.5, 3.0, 1.8, 3.1, 9.9, 2.6)
-)
-
-# Define color mapping with correct capitalization
-ai_colors_capital <- c(
-  "Openai" = "#17A683",
-  "Google" = "#528DD5",
-  "Deepseek" = "#5370FE",
-  "Perplexity" = "#278491",
-  "Anthropic" = "#D5A583",
-  "Xai" = "#000000"
 )
 
 # Make model a factor to preserve order
@@ -529,6 +550,7 @@ p <- ggplot(
     ),
     width = 0.2
   ) +
+  coord_flip() +
   scale_fill_manual(values = ai_colors_capital) +
   labs(
     title = "Flesch Kincaid Grade by Model",
@@ -537,20 +559,22 @@ p <- ggplot(
   ) +
   theme(
     legend.position = "none",
-    axis.title.x = element_blank()
+    axis.title.y = element_blank()
   )
+p
 
 ggsave(
-  "figures/flesch_model_bar_plot.pdf",
+  "figures/readability/flesch_model_bar_plot.svg",
   p,
-  width = 7,
-  height = 5
+  width = 5,
+  height = 4
 )
 ```
 
 
 ```{r}
 #| label: Readability-per-category-and-model
+#| tbl-cap: "Readability Metrics by Category and Model"
 
 read_by_category_model <- readability_scores %>%
   group_by(category, model) %>%
@@ -589,7 +613,7 @@ read_by_category_model %>%
     model = tools::toTitleCase(model)
   ) %>%
   gt() %>%
-  tab_header(title = "Table 2: Readability Metrics by Category and Model") %>%
+  # tab_header(title = "Readability Metrics by Category and Model") %>%
   fmt_missing(missing_text = "-")
 ```
 
@@ -617,7 +641,7 @@ ggplot(readability_scores, aes(x = Flesch, fill = model)) +
 
 p <- ggplot(
   readability_scores,
-  aes(x = model, y = Flesch.Kincaid, fill = model)
+  aes(x = tools::toTitleCase(model), y = Flesch.Kincaid, fill = model)
 ) +
   geom_violin(trim = FALSE, alpha = 0.6) +
   geom_jitter(width = 0.2, size = 1.5, alpha = 0.7) +
@@ -644,6 +668,13 @@ p <- ggplot(
   )
 
 p
+
+ggsave(
+  "figures/readability/flesch_model_category_violin_plot.svg",
+  p,
+  width = 7,
+  height = 10
+)
 ```
 
 #### B) Word Count
@@ -661,29 +692,40 @@ wordcount_scores <- unique_responses %>%
 
 ```{r}
 #| label: wc-by-model
+#| tbl-cap: "Response Characteristics by Model (Word Count)"
 
 wc_by_model <- wordcount_scores %>%
   group_by(model) %>%
   summarise(
     `Response Count` = n(),
+    wc_mean = mean(WordCount, na.rm = TRUE),
     `Word Count` = sprintf(
       "%.1f ± %.1f",
       mean(WordCount, na.rm = TRUE),
       sd(WordCount, na.rm = TRUE)
     )
-  )
-
-gt(wc_by_model) %>%
-  tab_header(
-    title = "Table 3: Response Characteristics by Model (Word Count)"
   ) %>%
+  arrange(desc(wc_mean))
+
+wc_by_model %>%
+  select(-wc_mean, -`Response Count`) %>%
+  mutate(
+    model = tools::toTitleCase(model)
+  ) %>%
+  gt() %>%
+  cols_label(
+    model = "Model"
+  ) %>%
+  # tab_header(
+  #   title = "Response Characteristics by Model (Word Count)"
+  # ) %>%
   fmt_missing(missing_text = "-")
 ```
 
 ```{r}
 #| label: wc-violin-model
 
-ggplot(wordcount_scores, aes(x = model, y = WordCount, fill = model)) +
+ggplot(wordcount_scores, aes(x = reorder(tools::toTitleCase(model), -WordCount), y = WordCount, fill = model)) +
   geom_violin(trim = FALSE, alpha = 0.6) +
   geom_jitter(width = 0.2, size = 1.2, alpha = 0.6) +
   stat_summary(
@@ -693,26 +735,119 @@ ggplot(wordcount_scores, aes(x = model, y = WordCount, fill = model)) +
     size = 3,
     fill = "white"
   ) +
+  geom_hline(
+    yintercept = mean(wordcount_scores$WordCount, na.rm = TRUE),
+    linetype = "dashed",
+    color = "red",
+    size = 0.8
+  ) +
+  annotate(
+    "text",
+    x = 5.0,
+    y = mean(wordcount_scores$WordCount, na.rm = TRUE) + 50,
+    label = sprintf(
+      "Mean: %.2f",
+      mean(wordcount_scores$WordCount, na.rm = TRUE)
+    ),
+    color = "red",
+    size = 4,
+    hjust = 0
+  ) +
   labs(
-    title = "Word Count by Model",
-    subtitle = "Violin + Jittered Points + Mean",
+    title = NULL,
+    subtitle = NULL,
     x = NULL,
     y = "Word Count"
   ) +
   scale_fill_manual(values = ai_colors) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    # axis.text.x = element_text(angle = 45, hjust = 1),
     panel.grid.minor = element_blank(),
     legend.position = "none"
   )
+
+ggsave(
+  "figures/readability/word_count_violin_plot.svg",
+  width = 7,
+  height = 5
+)
+
 ```
 
+```{r}
+#| label: wc-bar-plot-model
+
+# Calculate word count stats for bar plot
+wc_stats <- wordcount_scores %>%
+  group_by(model) %>%
+  summarise(
+    mean_wc = mean(WordCount, na.rm = TRUE),
+    sd_wc = sd(WordCount, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Create bar plot with SD error bars
+p_wc_bar <- ggplot(wc_stats, aes(x = reorder(tools::toTitleCase(model), -mean_wc), y = mean_wc, fill = model)) +
+  geom_bar(stat = "identity", width = 0.7) +
+  geom_errorbar(
+    aes(ymin = mean_wc - sd_wc, ymax = mean_wc + sd_wc),
+    width = 0.1,
+    color = brand_colors$primary_navy
+  ) +
+  geom_text(
+    aes(label = sprintf("%.0f", mean_wc)),
+    hjust = -0.3,
+    vjust = -1,
+    size = 4,
+    color = brand_colors$primary_navy
+  ) +
+  geom_hline(
+    yintercept = mean(wordcount_scores$WordCount, na.rm = TRUE),
+    linetype = "dashed",
+    color = "red",
+    size = 0.8
+  ) +
+  annotate(
+    "text",
+    x = 5.0,
+    y = mean(wordcount_scores$WordCount, na.rm = TRUE) + 50,
+    label = sprintf(
+      "Mean: %.0f words",
+      mean(wordcount_scores$WordCount, na.rm = TRUE)
+    ),
+    color = "red",
+    size = 4,
+    hjust = 0
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  labs(
+    title = NULL,
+    subtitle = NULL,
+    x = NULL,
+    y = "Word Count"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+print(p_wc_bar)
+
+# Save the plot
+ggsave(
+  "figures/readability/word_count_bar_plot.svg",
+  p_wc_bar,
+  width = 7,
+  height = 5
+)
+
+```
 
 
 ### 1.2 Overall Performance by Model
 
 ```{r}
 #| label: calc-overall-performance-by-model
+#| tbl-cap: "Frequency of Low Ratings (1-2) by Model and Grader Type"
 
 model_performance <- df_long %>%
   group_by(model) %>%
@@ -720,8 +855,76 @@ model_performance <- df_long %>%
     mean_rating = mean(rating, na.rm = TRUE),
     sd_rating = sd(rating, na.rm = TRUE),
     se_rating = sd_rating / sqrt(n()),
-    n_ratings = n()
+    n_ratings = n(),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE)
   )
+
+model_performance_human <- df_long %>%
+  filter(grader_type == "human") %>%
+  group_by(model) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    se_rating = sd_rating / sqrt(n()),
+    n_ratings = n(),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE)
+  )
+
+model_performance_ai <- df_long %>%
+  filter(grader_type != "human") %>%
+  group_by(model) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    se_rating = sd_rating / sqrt(n()),
+    n_ratings = n(),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE)
+  )
+
+# Compute frequency of low ratings (1-2) for automated graders by model
+low_rating_freq <- df_long %>%
+  mutate(
+    low_rating = ifelse(rating <= 2, 1, 0),
+    grader_category = ifelse(grader_type == "human", "Human", "Automated")
+  ) %>%
+  group_by(model, grader_category) %>%
+  summarise(
+    total_ratings = n(),
+    low_ratings_count = sum(low_rating),
+    low_rating_freq = mean(low_rating),
+    low_rating_pct = low_rating_freq * 100,
+    .groups = "drop"
+  ) %>%
+  arrange(grader_category, desc(low_rating_pct))
+
+# Display the results
+low_rating_freq %>%
+  mutate(
+    model = tools::toTitleCase(as.character(model)),
+    `Low Rating %` = sprintf("%.1f%%", low_rating_pct)
+  ) %>%
+  select(
+    `Grader Type` = grader_category,
+    Model = model,
+    `Total Ratings` = total_ratings,
+    `Low Ratings (1-2)` = low_ratings_count,
+    `Low Rating %`
+  ) %>%
+  gt(groupname_col = "Grader Type") %>%
+  # tab_header(
+  #   # title = "Frequency of Low Ratings (1-2) by Model and Grader Type",
+  #   subtitle = "Stratified by Human vs Automated graders"
+  # ) %>%
+  cols_align(align = "center", columns = everything())
 ```
 
 ```{r}
@@ -736,44 +939,133 @@ p_model_overall <- ggplot(
   geom_bar(stat = "identity", aes(fill = model), width = 0.7) +
   scale_fill_manual(values = ai_colors) +
   geom_errorbar(
-    aes(ymin = mean_rating - se_rating, ymax = mean_rating + se_rating),
-    width = 0.3,
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)), # Ensure upper limit does not exceed 5
+    width = 0.1,
     color = brand_colors$alert_red
   ) +
   geom_text(
     aes(label = sprintf("%.2f", mean_rating)),
-    vjust = -0.5,
+    vjust = -0.2,
     size = 4,
     color = brand_colors$primary_navy
   ) +
-  coord_cartesian(ylim = c(0, 5)) +
+  # coord_flip() +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) + # Add space on right
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
   labs(
-    title = "Mean rating ± SE across all raters and features",
+    title = NULL,
+    subtitle = element_blank(),
+    x = NULL,
+    y = "Mean Rating (1-5 scale)"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(5, 15, 5, 5, "mm") # Add right margin
+  )
+
+print(p_model_overall)
+
+# Save for publication with adjusted dimensions
+ggsave(
+  "figures/performance/overall_model_performance.svg",
+  p_model_overall,
+  width = 5, # Increased width
+  height = 4
+)
+
+p_model_overall_human <- ggplot(
+  model_performance_human,
+  aes(x = reorder(model, -mean_rating), y = mean_rating)
+) +
+  geom_bar(stat = "identity", aes(fill = model), width = 0.7) +
+  scale_fill_manual(values = ai_colors) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)), # Ensure upper limit does not exceed 5
+    width = 0.1,
+    color = brand_colors$alert_red
+  ) +
+  geom_text(
+    aes(label = sprintf("%.2f", mean_rating)),
+    vjust = -0.2,
+    size = 4,
+    color = brand_colors$primary_navy
+  ) +
+  # coord_flip() +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) + # Add space on right
+  labs(
+    title = NULL,
     subtitle = element_blank(),
     x = NULL,
     y = "Mean Rating (1-5 scale)"
   ) +
   scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
   theme(
+    legend.position = "none",
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
+    plot.margin = margin(5, 15, 5, 5, "mm") # Add right margin
   )
 
-print(p_model_overall)
+print(p_model_overall_human)
 
-# Save for publication
 ggsave(
-  "figures/figure1_overall_model_performance.pdf",
-  p_model_overall,
-  width = 8,
-  height = 6
+  "figures/performance/overall_model_performance_human.svg",
+  p_model_overall_human,
+  width = 5, # Increased width
+  height = 4
 )
+
+
+# ai only
+p_model_overall_ai <- ggplot(
+  model_performance_ai,
+  aes(x = reorder(model, -mean_rating), y = mean_rating)
+) +
+  geom_bar(stat = "identity", aes(fill = model), width = 0.7) +
+  scale_fill_manual(values = ai_colors) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)), # Ensure upper limit does not exceed 5
+    width = 0.1,
+    color = brand_colors$alert_red
+  ) +
+  geom_text(
+    aes(label = sprintf("%.2f", mean_rating)),
+    vjust = -0.2,
+    size = 4,
+    color = brand_colors$primary_navy
+  ) +
+  # coord_flip() +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) + # Add space on right
+  labs(
+    title = NULL,
+    subtitle = element_blank(),
+    x = NULL,
+    y = "Mean Rating (1-5 scale)"
+  ) +
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.margin = margin(5, 15, 5, 5, "mm") # Add right margin
+  )
+
+print(p_model_overall_ai)
+
+ggsave(
+  "figures/performance/overall_model_performance_ai.svg",
+  p_model_overall_ai,
+  width = 5, # Increased width
+  height = 4
+)
+
+
 ```
 
 #### 1.2.1 Model Preferred by Rater
 
 ```{r}
 #| label: model-preferences-data-from-raters
+#| tbl-cap: "Overall Model Preferences Across All Raters"
 
 df_preferences <- read_csv(
   "./data/data_preparation/preferences_20250606_115527.csv",
@@ -798,12 +1090,13 @@ pref_counts %>%
     percentage = "Percentage (%)"
   ) %>%
   tab_header(
-    title = "Overall Model Preferences Across All Raters"
+    title = "" # "Overall Model Preferences Across All Raters"
   )
 ```
 
 ```{r}
 #| label: model-reasons-preferred-table
+#| tbl-cap: "Reasons for Model Preference by Raters"
 
 # Prepare data for model preference reasons
 preference_reasons <- df_preferences %>%
@@ -825,9 +1118,9 @@ preference_reasons_gt <- preference_reasons %>%
     count = "Count",
     percentage = "Percentage (%)"
   ) %>%
-  tab_header(
-    title = "Reasons for Model Preference"
-  ) %>%
+  # tab_header(
+  #   title = "Reasons for Model Preference"
+  # ) %>%
   fmt_number(
     columns = c(percentage),
     decimals = 1
@@ -849,26 +1142,87 @@ p_pref_overall <- ggplot(
   pref_counts,
   aes(x = reorder(preferred_model, count), y = count)
 ) +
-  geom_bar(stat = "identity", fill = brand_colors$primary_navy) +
+  geom_bar(stat = "identity", aes(fill = preferred_model)) +
   geom_text(
     aes(label = paste0(count, " (", percentage, "%)")),
     hjust = -0.1,
     size = 4
   ) +
+  scale_fill_manual(values = ai_colors_capital) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.2))) + # expand y-axis to avoid text overlap
   coord_flip() +
   labs(
-    title = "Model Preferences Across All Raters",
-    x = "Model",
+    title = element_blank(),
+    x = element_blank(), # "Preferred Model",
     y = "Number of Preferences"
+  ) +
+  theme(
+    legend.position = "none"
   )
 
 print(p_pref_overall)
 
 ggsave(
-  "figures/model_preferences_human_ratings_overall.pdf",
+  "figures/performance/model_preferences_human_ratings_overall.svg",
   p_pref_overall,
-  width = 8,
+  width = 7,
+  height = 4
+)
+```
+
+```{r}
+#| label: pie-chart-rater-preferences-overall
+#| fig-width: 6
+#| fig-height: 6
+
+pref_counts <- pref_counts %>%
+  arrange(desc(count)) %>%
+  mutate(
+    preferred_model = fct_relevel(preferred_model, preferred_model)
+  )
+
+# Donut chart, starting at 12 o'clock
+p_donut <- ggplot(pref_counts, aes(x = 2, y = count, fill = preferred_model)) +
+
+  # 1) Draw bars at x=2 rather than x=""
+  geom_bar(stat = "identity", width = 1, color = "white", size = 0.5) +
+
+  # 2) Turn into pie, rotated so that start = 90° (π/2 radians)
+  coord_polar(theta = "y", start = pi / 2) +
+
+  # 3) Clip away the center by restricting x
+  xlim(0.5, 2.5) +
+
+  # 4) Labels in the middle of each slice, dropping overlaps
+  geom_text(
+    aes(label = paste0(
+      preferred_model, "\n",
+      count, " (", round(100 * count / sum(count), 1), "%)"
+    )),
+    position = position_stack(vjust = 0.5),
+    color = "white",
+    size = 3.5,
+    fontface = "bold",
+    check_overlap = TRUE
+  ) +
+  scale_fill_manual(values = ai_colors_capital) +
+  labs(
+    title    = NULL, # "Model Preferences Distribution",
+    subtitle = NULL # paste0("Total responses: ", sum(pref_counts$count))
+  ) +
+  theme_void() +
+  theme(
+    legend.position  = "none",
+    plot.title       = element_text(hjust = 0.5, size = 16, face = "bold"),
+    plot.subtitle    = element_text(hjust = 0.5, size = 12)
+  )
+
+print(p_donut)
+
+ggsave(
+  "figures/performance/donut_model_preferences_donut_chart.svg",
+  p_donut,
+  width = 6,
   height = 6
 )
 ```
@@ -876,6 +1230,7 @@ ggsave(
 
 ```{r}
 #| label: preferences-by-rater-student-expert
+#| tbl-cap: "Model Preferences by Individual Rater"
 
 pref_by_rater <- df_preferences %>%
   # Create anonymized rater names
@@ -909,7 +1264,7 @@ pref_by_rater %>%
     percentage = "Percentage (%)"
   ) %>%
   tab_header(
-    title = "Model Preferences by Individual Rater"
+    title = "" # "Model Preferences by Individual Rater"
   )
 ```
 
@@ -958,17 +1313,28 @@ p_pref_expert_student <- ggplot(
     )
   ) +
   labs(
-    title = "Model Preferences: Experts vs Students",
+    title = NULL,
     x = element_blank(), # "Preferred Model",
     y = "Percentage (%)",
     fill = "Rater Type"
   ) +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "top"
+    legend.position = c(0.95, 0.95),
+    legend.justification = c("right", "top"),
+    legend.box.background = element_rect(colour = "black", fill = "white"),
+    legend.box.margin = margin(6, 6, 6, 6),
+    legend.title = element_blank()
   )
 
 print(p_pref_expert_student)
+
+ggsave(
+  "figures/performance/bar_dodge_preferences_expert_vs_student.svg",
+  p_pref_expert_student,
+  width = 7,
+  height = 4
+)
 ```
 
 ```{r}
@@ -1026,7 +1392,7 @@ p_pref_expert_student_category <- ggplot(
   ) +
   facet_wrap(~category, scales = "free_y", nrow = 3) +
   labs(
-    title = "Model Preferences: Experts vs Students by Category",
+    title = NULL,
     x = element_blank(), # "Preferred Model",
     y = "Percentage (%)",
     fill = "Rater Type"
@@ -1035,7 +1401,8 @@ p_pref_expert_student_category <- ggplot(
     # axis.text.x = element_text(angle = 45, hjust = 1),
     # plot.margin = margin(t = 20, r = 10, b = 10, l = 10),
     plot.title = element_text(face = "plain"),
-    legend.position = "top",
+    legend.position = "bottom",
+    legend.title = element_blank(),
     strip.text = element_text(size = 10, face = "bold")
   )
 
@@ -1043,15 +1410,16 @@ print(p_pref_expert_student_category)
 
 # Save the plot
 ggsave(
-  "figures/model_preferences_expert_vs_student_by_category.pdf",
+  "figures/performance/bar_dodge_preferences_expert_vs_student_by_category.svg",
   p_pref_expert_student_category,
-  width = 8,
+  width = 7,
   height = 10
 )
 ```
 
 ```{r}
 #| label: table-preferences-by-rater-type-category
+#| tbl-cap: "Model Preferences by Rater Type and Category"
 
 pref_by_rater_type_category %>%
   select(category, rater_type, preferred_model, n, percentage) %>%
@@ -1064,7 +1432,7 @@ pref_by_rater_type_category %>%
     percentage = "Percentage (%)"
   ) %>%
   tab_header(
-    title = "Model Preferences by Rater Type and Category"
+    title = "" # "Model Preferences by Rater Type and Category"
   ) %>%
   fmt_number(columns = percentage, decimals = 1)
 ```
@@ -1239,8 +1607,58 @@ feature_performance <- df_long %>%
     mean_rating = mean(rating, na.rm = TRUE),
     sd_rating = sd(rating, na.rm = TRUE),
     se_rating = sd_rating / sqrt(n()),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
     n_ratings = n()
-  )
+  ) %>%
+  arrange(desc(mean_rating))
+
+feature_performance_human <- df_long %>%
+  filter(grader_type == "human") %>%
+  group_by(feature) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    se_rating = sd_rating / sqrt(n()),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    n_ratings = n()
+  ) %>%
+  arrange(desc(mean_rating))
+
+feature_performance_ai <- df_long %>%
+  filter(grader_type != "human") %>%
+  group_by(feature) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    se_rating = sd_rating / sqrt(n()),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    n_ratings = n()
+  ) %>%
+  arrange(desc(mean_rating))
+
+feature_performance_ai_per_model <- df_long %>%
+  filter(grader_type != "human") %>%
+  group_by(feature, model) %>%
+  summarise(
+    mean_rating = mean(rating, na.rm = TRUE),
+    sd_rating = sd(rating, na.rm = TRUE),
+    se_rating = sd_rating / sqrt(n()),
+    min_rating = min(rating, na.rm = TRUE),
+    max_rating = max(rating, na.rm = TRUE),
+    q05 = quantile(rating, 0.05, na.rm = TRUE),
+    q95 = quantile(rating, 0.95, na.rm = TRUE),
+    n_ratings = n()
+  ) %>%
+  arrange(desc(mean_rating))
 
 # Create horizontal bar chart
 p_feature_overall <- ggplot(
@@ -1253,19 +1671,24 @@ p_feature_overall <- ggplot(
     width = 0.7
   ) +
   geom_errorbar(
-    aes(ymin = mean_rating - se_rating, ymax = mean_rating + se_rating),
-    width = 0.3,
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.2,
     color = brand_colors$alert_red
   ) +
   geom_text(
     aes(label = sprintf("%.2f", mean_rating)),
     hjust = -0.2,
+    vjust = -0.5,
     size = 4,
     color = brand_colors$primary_navy
   ) +
-  coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5)) +
+  coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5.5)) +
+  scale_y_continuous(
+    limits = c(0, 5.5),
+    breaks = seq(0, 5.5, 1)
+  ) + # Add space on right
   labs(
-    title = "Mean rating ± SE across all models and raters",
+    title = NULL,
     x = "Feature",
     y = "Mean Rating (1-5 scale)"
   ) +
@@ -1275,12 +1698,114 @@ print(p_feature_overall)
 
 # Save for publication
 ggsave(
-  "figures/figure2_overall_feature_performance.pdf",
+  "figures/performance_feature/bar_overall_feature_performance.svg",
   p_feature_overall,
-  width = 8,
-  height = 6
+  width = 7,
+  height = 4
 )
 ```
+
+
+```{r}
+#| label: barplot-overall-feature-performance-human
+
+p_feature_overall_human <- ggplot(
+  feature_performance_human,
+  aes(x = reorder(feature, mean_rating), y = mean_rating)
+) +
+  geom_bar(
+    stat = "identity",
+    fill = brand_colors$supporting_blue,
+    width = 0.7
+  ) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.2,
+    color = brand_colors$alert_red
+  ) +
+  geom_text(
+    aes(label = sprintf("%.2f", mean_rating)),
+    hjust = -0.2,
+    vjust = -0.5,
+    size = 4,
+    color = brand_colors$primary_navy
+  ) +
+  coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5.5)) +
+  scale_y_continuous(
+    limits = c(0, 5.5),
+    breaks = seq(0, 5.5, 1)
+  ) + # Add space on right
+  labs(
+    title = NULL,
+    x = "Feature",
+    y = "Mean Rating (1-5 scale)"
+  ) +
+  theme(axis.title.y = element_blank())
+
+print(p_feature_overall_human)
+
+# Save for publication
+ggsave(
+  "figures/performance_feature/bar_overall_feature_performance_human.svg",
+  p_feature_overall_human,
+  width = 7,
+  height = 4
+)
+```
+
+
+```{r}
+#| label: barplot-overall-feature-performance-ai
+
+p_feature_overall_ai <- ggplot(
+  feature_performance_ai,
+  aes(x = reorder(feature, mean_rating), y = mean_rating)
+) +
+  geom_bar(
+    stat = "identity",
+    fill = brand_colors$supporting_blue,
+    width = 0.7
+  ) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.2,
+    color = brand_colors$alert_red
+  ) +
+  geom_text(
+    aes(label = sprintf("%.2f", mean_rating)),
+    hjust = -0.2,
+    vjust = -0.5,
+    size = 4,
+    color = brand_colors$primary_navy
+  ) +
+  coord_flip(xlim = c(0.5, 9.5), ylim = c(0, 5.5)) +
+  scale_y_continuous(
+    limits = c(0, 5.5),
+    breaks = seq(0, 5.5, 1)
+  ) + # Add space on right
+  labs(
+    title = NULL,
+    x = "Feature",
+    y = "Mean Rating (1-5 scale)"
+  ) +
+  theme(axis.title.y = element_blank())
+
+print(p_feature_overall_ai)
+
+# Save for publication
+ggsave(
+  "figures/performance_feature/bar_overall_feature_performance_ai.svg",
+  p_feature_overall_ai,
+  width = 7,
+  height = 4
+)
+```
+
+```{r}
+
+
+```
+
 
 ### 1.4 Per-Rater Summary Statistics
 
@@ -1365,6 +1890,7 @@ print(p_rater_summary)
 
 ```{r}
 #| label: table-per-rater-stats1
+#| tbl-cap: "Individual rater summary statistics"
 
 rater_table <- rater_summary %>%
   mutate(
@@ -1380,7 +1906,7 @@ rater_table <- rater_summary %>%
 
 kableExtra::kable(
   rater_table,
-  caption = "Table 2. Individual rater summary statistics",
+  # caption = "Individual rater summary statistics",
   # format = "latex",
   booktabs = TRUE
 ) %>%
@@ -1490,12 +2016,7 @@ best_worst <- feature_stats %>%
 ```{r}
 #| label: feature-table-wide
 #| ft.keepnext: false
-
-# Create a landscape table for wide content
-if (knitr::is_latex_output()) {
-  # Use LaTeX environment instead of direct commands
-  cat("\\begin{landscape}\n")
-}
+#| tbl-cap: "Mean Feature Ratings (95% CI) by Model"
 
 feature_wide %>%
   gt(rowname_col = "feature") %>%
@@ -1509,20 +2030,17 @@ feature_wide %>%
     xai = "XAI"
   ) %>%
   tab_header(
-    title = "Mean Feature Ratings (95% CI) by Model"
+    title = "", # "Mean Feature Ratings (95% CI) by Model"
   ) %>%
   tab_options(
     table.width = pct(100),
     table.font.size = px(9) # Reduce font size for PDF
   )
-
-if (knitr::is_latex_output()) {
-  cat("\\end{landscape}\n")
-}
 ```
 
 ```{r}
 #| label: best-worst-ci
+#| tbl-cap: "Best- and Worst-Rated Features by Model"
 
 # calculated feature_stats and best_worst before:
 # feature_stats has columns: model, feature, mean_rating, ci_lower, ci_upper
@@ -1582,7 +2100,7 @@ best_worst_ci %>%
     `Bottom Feature (Mean [95% CI])` = "Lowest"
   ) %>%
   tab_header(
-    title = "Best- and Worst-Rated Features by Model"
+    title = "" # "Best- and Worst-Rated Features by Model"
   )
 
 ```
@@ -1734,6 +2252,7 @@ print(icc_autograders)
 
 ```{r}
 #| label: icc-within-group-table-overall-features
+#| tbl-cap: "Overall Within-Group ICC(A,1) Results"
 
 # build a summary tibble with combined CI column
 icc_summary <- tibble(
@@ -1778,7 +2297,7 @@ icc_summary %>%
     Interpretation = "Interpretation"
   ) %>%
   tab_header(
-    title = "Within‐Group ICC(A,1) Results"
+    title = "" # "Within‐Group ICC(A,1) Results"
   )
 ```
 
@@ -1822,6 +2341,7 @@ icc_feature_all <- map_dfr(groups, function(g) {
 
 ```{r}
 #| label: icc-feature-table
+#| tbl-cap: "Feature-Wise ICC(A,1) by Rater Group"
 
 icc_feature_all %>%
   arrange(Group, Feature) %>%
@@ -1843,7 +2363,7 @@ icc_feature_all %>%
     `95% CI` = "(95% CI)"
   ) %>%
   tab_header(
-    title = "Feature-Wise ICC(A,1) by Rater Group"
+    title = "" # "Feature-Wise ICC(A,1) by Rater Group"
   )
 
 ```
@@ -2138,6 +2658,7 @@ if (length(significant_features) > 0) {
 
 ```{r}
 #| label: gt-LRT-p-vals-model-effects
+#| tbl-cap: "Likelihood‐Ratio Tests for Model Effects"
 
 feature_model_stats %>%
   gt() %>%
@@ -2166,13 +2687,14 @@ feature_model_stats %>%
     }
   ) %>%
   tab_header(
-    title = "Table 4. Likelihood‐Ratio Tests for Model Effects"
+    title = "" # "Likelihood-Ratio Tests for Model Effects"
   ) %>%
   opt_row_striping()
 ```
 
 ```{r}
 #| label: gt-emm-model-lmm
+#| tbl-cap: "Estimated Marginal Means (95% CI) by Model"
 
 emm_data %>%
   mutate(
@@ -2192,7 +2714,7 @@ emm_data %>%
   gt() %>%
   tab_options(latex.use_longtable = TRUE) %>%
   tab_header(
-    title = "Table 5. Estimated Marginal Means for Significant Features"
+    title = "" # "Estimated Marginal Means for Significant Features"
   ) %>%
   cols_merge(
     columns = c("Estimated Mean", "Lower CI", "Upper CI"),
@@ -2323,6 +2845,7 @@ pairwise_summary <- map_df(rater_type_results, function(res) {
 
 ```{r}
 #| label: gt-pairwise-comparison-summary-lmm
+#| tbl-cap: "Pairwise Comparison Summary (LMM)"
 
 pairwise_summary %>%
   group_by(Feature) %>%
@@ -2339,7 +2862,7 @@ pairwise_summary %>%
     Sig = "Significance"
   ) %>%
   tab_header(
-    title = "Pairwise Comparisons by Feature"
+    title = "", # "Pairwise Comparisons by Feature"
   ) %>%
   opt_row_striping() %>%
   fmt_missing(
@@ -2501,6 +3024,7 @@ This makes intuitive sense - providing complete, educational, empathetic respons
 
 ```{r}
 #| label: loadings-table
+#| tbl-cap: "Feature loadings on first two principal components"
 
 loadings_table <- loadings_df %>%
   arrange(desc(abs(PC1))) %>%
@@ -2512,7 +3036,7 @@ loadings_table <- loadings_df %>%
 
 kable(
   loadings_table,
-  caption = "Table 6. Feature loadings on first two principal components",
+  # caption = "Feature loadings on first two principal components",
   # format = "latex",
   booktabs = TRUE
 ) %>%
@@ -2751,6 +3275,7 @@ print(p_auto_performance)
 
 ```{r}
 #| label: auto-grader-performance-table
+#| tbl-cap: "Auto-grader performance metrics compared to human consensus"
 
 auto_performance_table <- auto_performance %>%
   mutate(
@@ -2786,7 +3311,7 @@ auto_performance_table %>%
     decimals = 3
   ) %>%
   tab_header(
-    title = "Table 7. Auto-grader performance metrics compared to human consensus"
+    title = "", # "Auto-grader performance metrics compared to human consensus"
   ) %>%
   opt_row_striping()
 ```
@@ -2984,6 +3509,7 @@ key_findings <- data.frame(
 
 ```{r}
 #| label: gt-key-findings-table
+#| tbl-cap: "Summary of Key Statistical Findings"
 
 key_findings %>%
   gt() %>%
@@ -2993,7 +3519,7 @@ key_findings %>%
     Details = "Details"
   ) %>%
   tab_header(
-    title = "Table 8. Summary of Key Statistical Findings"
+    title = "", # "Summary of Key Statistical Findings"
   ) %>%
   tab_options(
     table.width = pct(100),
