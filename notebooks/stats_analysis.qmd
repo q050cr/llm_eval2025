@@ -519,6 +519,14 @@ ggsave(
   width = 7,
   height = 5
 )
+
+ggsave(
+  "figures/esc_poster/flesch_model_violin_plot.svg",
+  p,
+  width = 8,
+  height = 5
+)
+
 ```
 
 ```{r}
@@ -569,6 +577,7 @@ ggsave(
   width = 5,
   height = 4
 )
+
 ```
 
 
@@ -840,6 +849,21 @@ ggsave(
   height = 5
 )
 
+poster_esc <- p_wc_bar +
+  theme_minimal(base_size = 20) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+poster_esc
+
+ggsave(
+  "figures/esc_poster/word_count_bar_plot.svg",
+  p_wc_bar,
+  width = 8,
+  height = 5
+)
 ```
 
 
@@ -1057,8 +1081,132 @@ ggsave(
   width = 5, # Increased width
   height = 4
 )
+```
 
+```{r}
+#| label: model-performance-with-points
+#| fig-width: 8
+#| fig-height: 6
 
+# Bar plot with individual points for overall data
+p <- ggplot(model_performance, aes(x = reorder(model, -mean_rating), y = mean_rating)) +
+  geom_bar(stat = "identity", aes(fill = model), width = 0.7, alpha = 0.9) +
+  geom_jitter(
+    data = df_long, aes(x = model, y = rating),
+    width = 0.2, alpha = 0.2, size = 1, color = brand_colors$primary_navy
+  ) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.1, color = brand_colors$alert_red
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", mean_rating)),
+    vjust = -0.5, size = 4,
+    color = brand_colors$alert_red,
+    fill = "white",
+    label.padding = unit(0.15, "lines"),
+    fontface = "bold"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) +
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
+  labs(x = NULL, y = "Mean Rating (1-5 scale)", title = element_blank()) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points.svg",
+  p,
+  width = 8,
+  height = 5
+)
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points.png",
+  p,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
+
+# Human only with points
+p_human <- ggplot(model_performance_human, aes(x = reorder(model, -mean_rating), y = mean_rating)) +
+  geom_bar(stat = "identity", aes(fill = model), width = 0.7, alpha = 0.9) +
+  geom_jitter(
+    data = df_long %>% filter(grader_type == "human"), aes(x = model, y = rating),
+    width = 0.2, alpha = 0.2, size = 1, color = brand_colors$primary_navy
+  ) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.1, color = brand_colors$alert_red
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", mean_rating)),
+    vjust = -0.5, size = 4,
+    color = brand_colors$alert_red,
+    fill = "white",
+    label.padding = unit(0.15, "lines"),
+    fontface = "bold"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) +
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
+  labs(x = NULL, y = "Mean Rating (1-5 scale)", title = element_blank()) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points_human.svg",
+  p_human,
+  width = 8,
+  height = 5
+)
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points_human.png",
+  p_human,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
+
+# AI only with points
+p_ai <- ggplot(model_performance_ai, aes(x = reorder(model, -mean_rating), y = mean_rating)) +
+  geom_bar(stat = "identity", aes(fill = model), width = 0.7, alpha = 0.9) +
+  geom_jitter(
+    data = df_long %>% filter(grader_type != "human"), aes(x = model, y = rating),
+    width = 0.2, alpha = 0.2, size = 1, color = brand_colors$primary_navy
+  ) +
+  geom_errorbar(
+    aes(ymin = mean_rating - sd_rating, ymax = pmin(mean_rating + sd_rating, 5)),
+    width = 0.1, color = brand_colors$alert_red
+  ) +
+  geom_label(
+    aes(label = sprintf("%.2f", mean_rating)),
+    vjust = -0.5, size = 4,
+    color = brand_colors$alert_red,
+    fill = "white",
+    label.padding = unit(0.15, "lines"),
+    fontface = "bold"
+  ) +
+  scale_fill_manual(values = ai_colors) +
+  scale_y_continuous(limits = c(0, 5.5), breaks = seq(0, 5.5, 1), expand = expansion(mult = c(0, 0.15))) +
+  scale_x_discrete(labels = function(x) tools::toTitleCase(x)) +
+  labs(x = NULL, y = "Mean Rating (1-5 scale)", title = element_blank()) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points_ai.svg",
+  p_ai,
+  width = 8,
+  height = 5
+)
+
+ggsave(
+  "figures/esc_poster/overall_model_performance_with_points_ai.png",
+  p_ai,
+  width = 8,
+  height = 5,
+  dpi = 600
+)
 ```
 
 #### 1.2.1 Model Preferred by Rater
@@ -1167,6 +1315,13 @@ ggsave(
   p_pref_overall,
   width = 7,
   height = 4
+)
+
+ggsave(
+  "figures/esc_poster/model_preferences_human_ratings_overall.svg",
+  p_pref_overall,
+  width = 8,
+  height = 5
 )
 ```
 
@@ -1701,6 +1856,13 @@ ggsave(
   "figures/performance_feature/bar_overall_feature_performance.svg",
   p_feature_overall,
   width = 7,
+  height = 4
+)
+
+ggsave(
+  "figures/esc_poster/bar_overall_feature_performance.svg",
+  p_feature_overall,
+  width = 8,
   height = 4
 )
 ```
@@ -3360,6 +3522,10 @@ panel_b <- df_long %>%
     sd = sd(rating, na.rm = TRUE),
     .groups = "drop"
   ) %>%
+  mutate(
+    ymin = pmax(1, mean_rating - sd),
+    ymax = pmin(5, mean_rating + sd)
+  ) %>%
   ggplot(aes(
     x = reorder(rater_type_detailed, -mean_rating),
     y = mean_rating,
@@ -3367,7 +3533,7 @@ panel_b <- df_long %>%
   )) +
   geom_bar(stat = "identity") +
   geom_errorbar(
-    aes(ymin = mean_rating - sd, ymax = mean_rating + sd),
+    aes(ymin = ymin, ymax = ymax),
     width = 0.3
   ) +
   scale_fill_manual(
@@ -3387,11 +3553,21 @@ panel_b <- df_long %>%
     axis.title.x = element_blank()
   )
 
+panel_b
+
 ggsave(
   "figures/panel_b_rater_type_agreement.pdf",
   panel_b,
   width = 4,
   height = 4
+)
+
+ggsave(
+  "figures/esc_poster/panel_b_rater_type_agreement.png",
+  panel_b,
+  width = 6,
+  height = 4,
+  dpi = 300
 )
 
 ```
