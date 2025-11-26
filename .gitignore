@@ -25,6 +25,7 @@ wheels/
 data/
 figures/
 notebooks/stats_analysis_files/
+notebooks/stats_analysis_session/
 outputs/
 quarto_output/
 logs/
@@ -42,6 +43,7 @@ references.bib
 setup.sh
 config.yaml
 scripts/test.py
+CLAUDE.md
 
 
 # Jupyter Notebook checkpoints
