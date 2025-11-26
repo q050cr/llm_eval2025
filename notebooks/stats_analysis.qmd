@@ -290,24 +290,36 @@ For instance, a study analyzing patient information sheets found that the mean F
 * **Use Flesch-Kincaid Grade Level (FKGL)** when you need a straightforward indication of the education level required to understand the text. This is particularly useful in medical contexts, where materials should be tailored to the patient's reading ability.([en.wikipedia.org][7])
 * **Use Flesch Reading Ease (FRE)** if you prefer a score that reflects the overall readability on a 100-point scale. This can be helpful for comparing the readability of different texts or versions of the same text.
 
+**Preprocessing Steps for Readability Analysis (added 11/2025))**:
+
+- Remove markdown headers entirely (they're not sentences)
+- Convert bullet points and numbered lists to periods (each becomes a sentence)
+- Perplexity Citations already removed
 
 ```{r}
 #| label: fn-readability-metrics
 
 clean_text_for_readability <- function(text) {
   text %>%
+    # Remove markdown headers entirely (they're not sentences)
+    str_replace_all("#{1,6}\\s+[^\n]+\n?", "") %>%
+    # Convert bullet points to periods (each becomes a sentence)
+    str_replace_all("(?m)^\\s*[-*•]\\s+", ". ") %>%
+    # Convert numbered lists to periods
+    str_replace_all("(?m)^\\s*\\d+\\.\\s+", ". ") %>%
     # Remove markdown formatting
-    str_replace_all("\\*\\*(.*?)\\*\\*", "\\1") %>% # Remove **bold**
-    str_replace_all("###\\s*", "") %>% # Remove ### headers
-    str_replace_all("#\\s*", "") %>% # Remove # headers
-    # Clean up special characters that might confuse readability
+    str_replace_all("\\*\\*([^*]+)\\*\\*", "\\1") %>%
+    str_replace_all("\\*([^*]+)\\*", "\\1") %>%
+    # Handle special characters
     str_replace_all("≤", "less than or equal to") %>%
-    # Remove extra whitespace
+    str_replace_all("≥", "greater than or equal to") %>%
+    # Clean up artifacts
+    str_replace_all("\\.\\s*\\.", ".") %>%
+    str_replace_all("^\\. ", "") %>%
     str_replace_all("\\s+", " ") %>%
     str_trim()
 }
 
-# Modified function
 compute_readability <- function(texts) {
   cleaned_texts <- map_chr(texts, clean_text_for_readability)
   txt_quanteda <- quanteda::corpus(cleaned_texts)
@@ -324,58 +336,6 @@ compute_readability <- function(texts) {
   )
   as_tibble(stats)
 }
-
-# Original function (no cleaning)
-compute_readability_raw <- function(texts) {
-  txt_quanteda <- quanteda::corpus(texts) # No cleaning step
-  stats <- quanteda.textstats::textstat_readability(
-    txt_quanteda,
-    measure = c(
-      "Flesch",
-      "Flesch.Kincaid",
-      "FOG",
-      "SMOG",
-      "Coleman.Liau.short",
-      "ARI"
-    )
-  )
-  as_tibble(stats)
-}
-```
-
-
-```{r}
-#| label: compare-cleaned-text-stats-with-raw
-#| include: false
-
-# Test on a few more samples to see if the pattern holds
-test_samples <- head(unique_responses$response, 5) # Test first 5 responses
-
-# Compare raw vs cleaned across multiple texts
-comparison_results <- map_dfr(
-  1:length(test_samples),
-  ~ {
-    text <- test_samples[.x]
-
-    raw <- compute_readability_raw(text) %>%
-      mutate(version = "raw", sample = .x)
-    cleaned <- compute_readability(clean_text_for_readability(text)) %>%
-      mutate(version = "cleaned", sample = .x)
-
-    bind_rows(raw, cleaned)
-  }
-)
-
-# Check if any differences exist
-res_cleaning <- comparison_results %>%
-  select(-document) %>%
-  pivot_wider(names_from = version, values_from = c(Flesch:ARI)) %>%
-  mutate(
-    flesch_diff = abs(Flesch_raw - Flesch_cleaned),
-    fk_diff = abs(Flesch.Kincaid_raw - Flesch.Kincaid_cleaned)
-  )
-
-# no diffs observed
 ```
 
 ```{r}
@@ -444,8 +404,8 @@ readability_per_model_gt
 ggplot(readability_scores, aes(x = Flesch.Kincaid, fill = model)) +
   geom_density(alpha = 0.4) +
   labs(
-    title = "Distribution of Flesch Reading Ease by Model",
-    x = "Flesch Reading Ease",
+    title = "Distribution of Flesch-Kincaid Grade Level by Model",
+    x = "Flesch-Kincaid Grade Level",
     y = "Density"
   ) +
   scale_fill_manual(values = ai_colors)
@@ -493,7 +453,7 @@ p <- readability_scores %>%
     title = NULL,
     subtitle = NULL,
     x = NULL,
-    y = "Flesch Reading Ease"
+    y = "Flesch-Kincaid Grade Level"
   ) +
   scale_fill_manual(values = ai_colors) +
   # coord_flip() +
@@ -663,10 +623,10 @@ p <- ggplot(
   ) +
   facet_wrap(~category, ncol = 1) +
   labs(
-    title = "Flesch Reading Ease by Model and Category",
+    title = "Flesch-Kincaid Grade Level by Model and Category",
     subtitle = "Violin + individual scores + mean",
     x = NULL,
-    y = "Flesch Reading Ease"
+    y = "Flesch-Kincaid Grade Level"
   ) +
   scale_fill_manual(values = ai_colors) +
   theme_minimal(base_size = 14) +
