@@ -412,6 +412,53 @@ ggplot(readability_scores, aes(x = Flesch.Kincaid, fill = model)) +
 ```
 
 ```{r}
+#| label: fk-grade-level-significance-test
+
+# ANOVA to test if there are significant differences among models
+anova_fk <- aov(Flesch.Kincaid ~ model, data = readability_scores)
+anova_summary <- summary(anova_fk)
+
+cat("=== ANOVA: Flesch-Kincaid Grade Level by Model ===\n")
+print(anova_summary)
+
+# Post-hoc pairwise comparisons (Tukey HSD)
+tukey_fk <- TukeyHSD(anova_fk)
+cat("\n=== Tukey HSD Post-hoc Comparisons ===\n")
+print(tukey_fk)
+
+# Extract significant pairs (p < 0.05)
+tukey_df <- as.data.frame(tukey_fk$model) %>%
+  rownames_to_column("comparison") %>%
+  filter(`p adj` < 0.05) %>%
+  arrange(`p adj`)
+
+cat("\n=== Significant Pairwise Differences (p < 0.05) ===\n")
+if (nrow(tukey_df) > 0) {
+  print(tukey_df %>% select(comparison, diff, `p adj`))
+} else {
+  cat("No significant differences found.\n")
+}
+```
+
+**Interpretation:**
+
+The ANOVA revealed significant differences in Flesch-Kincaid Grade Level among models (*F*(5, 294) = 13.96, *p* < 0.001). Post-hoc Tukey HSD tests identified `r nrow(tukey_df)` significant pairwise differences (α = 0.05):
+
+**Key findings:**
+
+- **Perplexity** writes at significantly higher grade level (harder to read) than all other models except XAI:
+  - vs Google: +`r sprintf("%.2f", tukey_df %>% filter(comparison == "perplexity-google") %>% pull(diff))` grade levels (*p* < 0.001)
+  - vs DeepSeek: +`r sprintf("%.2f", tukey_df %>% filter(comparison == "perplexity-deepseek") %>% pull(diff))` grade levels (*p* < 0.001)
+  - vs Anthropic: +`r sprintf("%.2f", tukey_df %>% filter(comparison == "perplexity-anthropic") %>% pull(diff))` grade levels (*p* < 0.001)
+  - vs OpenAI: +`r sprintf("%.2f", tukey_df %>% filter(comparison == "perplexity-openai") %>% pull(diff))` grade levels (*p* = 0.002)
+
+- **XAI** also writes at higher grade level than Google (+`r sprintf("%.2f", tukey_df %>% filter(comparison == "xai-google") %>% pull(diff))` grades, *p* < 0.001) and DeepSeek (+`r sprintf("%.2f", tukey_df %>% filter(comparison == "xai-deepseek") %>% pull(diff))` grades, *p* = 0.019)
+
+- **Google** produces the most readable text (lowest FK grade level), significantly easier than OpenAI (-`r sprintf("%.2f", abs(tukey_df %>% filter(comparison == "openai-google") %>% pull(diff)))` grades, *p* = 0.005), XAI, and Perplexity
+
+- **No significant differences** between Anthropic, DeepSeek, and OpenAI (*p* > 0.05)
+
+```{r}
 #| label: violin-plot-flesch-model
 #| message: false
 #| warning: false
@@ -491,6 +538,7 @@ ggsave(
 
 ```{r}
 #| label: barplot-flesch-model
+#| include: false
 
 # Create the data frame
 readability_data <- data.frame(
@@ -675,6 +723,14 @@ wc_by_model <- wordcount_scores %>%
     )
   ) %>%
   arrange(desc(wc_mean))
+
+# ANOVA to test if there are significant differences among models
+anova_word <- aov(WordCount ~ model, data = wordcount_scores)
+anova_summary <- summary(anova_word)
+
+cat("=== ANOVA: Word Count by Model ===\n")
+print(anova_summary)
+
 
 wc_by_model %>%
   select(-wc_mean, -`Response Count`) %>%
